@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Music Scheduler">
@@ -595,7 +595,7 @@
   .spot-fee-input input {
     width: 110px; padding: 6px 10px; background: var(--bg3);
     border: 1px solid var(--border); border-radius: var(--radius-sm);
-    color: var(--text); font-size: 14px; font-family: var(--mono);
+    color: var(--text); font-size: 16px; font-family: var(--mono);
     font-weight: 700; outline: none; transition: border-color 0.15s; text-align: right;
   }
   .spot-fee-input input:focus { border-color: var(--accent); }
@@ -650,11 +650,15 @@
   .rule-edit-row { display: flex; align-items: center; gap: 8px; }
   .rule-edit-row input, .rule-edit-row select {
     padding: 5px 8px; background: var(--bg3); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
+    border-radius: var(--radius-sm); color: var(--text); font-size: 16px;
     font-family: var(--mono); outline: none; transition: border-color 0.15s;
   }
   .rule-edit-row input:focus, .rule-edit-row select:focus { border-color: var(--accent); }
   .rule-edit-row input[type=number] { width: 70px; text-align: right; }
+  @media (min-width: 641px) {
+    .spot-fee-input input { font-size: 14px; }
+    .rule-edit-row input, .rule-edit-row select { font-size: 12px; }
+  }
 
   /* Modal base */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; }
@@ -665,7 +669,8 @@
   .modal-close:hover { color: var(--text); background: var(--bg4); }
   .form-group { margin-bottom: 14px; }
   .form-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; display: block; }
-  .form-control { width: 100%; padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  .form-control { width: 100%; padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 16px; font-family: var(--font); outline: none; transition: border-color 0.15s; }
+  @media (min-width: 641px) { .form-control { font-size: 13px; } }
   .form-control:focus { border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
