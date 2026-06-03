@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="教室管理">
+<meta name="apple-mobile-web-app-title" content="Music Scheduler">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#E85D24">
 <meta name="description" content="ドラム教室の生徒・スケジュール・収入を一元管理するアプリ">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>ドラム教室 管理アプリ</title>
+<title>Music Scheduler</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
 
@@ -478,25 +478,61 @@
   .settings-panel { display: none; }
   .settings-panel.active { display: block; }
 
-  /* スマホ: 上部横スクロールタブ */
+  /* スマホ: 階層ナビ方式 */
+  .settings-menu-home { display: none; }
+  .settings-panel-back { display: none; }
+
   @media (max-width: 640px) {
-    .settings-layout { flex-direction: column; }
-    .settings-tabs {
-      flex-direction: row; width: 100%; padding-right: 0;
-      border-right: none; margin-right: 0;
-      margin-bottom: 16px; border-bottom: 1px solid var(--border);
-      padding-bottom: 0; gap: 0; overflow-x: auto;
+    /* PC用サイドバーを非表示 */
+    .settings-layout { display: block; }
+    .settings-tabs { display: none; }
+    .settings-panels { display: block; }
+
+    /* パネルはデフォルト非表示（JSで制御） */
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; }
+
+    /* スマホ設定トップメニュー */
+    .settings-menu-home {
+      display: block;
     }
-    .settings-tab {
-      flex-direction: column; gap: 4px; padding: 8px 16px 10px;
-      font-size: 11px; border-radius: 0; white-space: nowrap;
-      flex-shrink: 0; border-bottom: 2px solid transparent;
+    .settings-menu-home.hidden { display: none; }
+    .settings-menu-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 4px; border-bottom: 1px solid var(--border);
+      cursor: pointer; background: none; border-left: none; border-right: none; border-top: none;
+      width: 100%; text-align: left;
+      transition: background 0.1s;
     }
-    .settings-tab.active {
-      background: none; color: var(--accent);
-      border-bottom-color: var(--accent);
+    .settings-menu-item:active { background: var(--bg3); }
+    .settings-menu-item-icon {
+      font-size: 22px; width: 40px; height: 40px;
+      border-radius: 10px; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .settings-tab-icon { font-size: 18px; }
+    .settings-menu-item-body { flex: 1; min-width: 0; }
+    .settings-menu-item-title { font-size: 15px; font-weight: 600; color: var(--text1); }
+    .settings-menu-item-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .settings-menu-item-arrow {
+      font-size: 18px; color: var(--text3); flex-shrink: 0;
+    }
+
+    /* 戻るボタン */
+    .settings-panel-back {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 0 16px; color: var(--accent);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      background: none; border: none;
+    }
+    .settings-panel-back.hidden { display: none; }
+    .settings-panel-title-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px; padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-panel-title-row h2 {
+      font-size: 18px; font-weight: 700; margin: 0;
+    }
   }
 
   .settings-section { margin-bottom: 32px; }
@@ -1099,6 +1135,36 @@
 
       <!-- SETTINGS -->
       <div class="view" id="view-settings">
+
+        <!-- モバイル用カテゴリメニュー -->
+        <div class="settings-menu-home" id="settingsMenuHome">
+          <h2 style="font-size:20px;font-weight:700;margin:0 0 16px;">設定</h2>
+          <div class="settings-menu-item" onclick="switchSettingsTab('lesson')">
+            <div class="settings-menu-item-icon" style="background:#eff6ff;">🎵</div>
+            <div style="flex:1">
+              <div class="settings-menu-item-title">レッスン管理</div>
+              <div class="settings-menu-item-desc">コース・グループ・振替・時間単位</div>
+            </div>
+            <div class="settings-menu-item-arrow">›</div>
+          </div>
+          <div class="settings-menu-item" onclick="switchSettingsTab('display')">
+            <div class="settings-menu-item-icon" style="background:#f0fdf4;">🎨</div>
+            <div style="flex:1">
+              <div class="settings-menu-item-title">表示設定</div>
+              <div class="settings-menu-item-desc">外観・カレンダー・年齢区分</div>
+            </div>
+            <div class="settings-menu-item-arrow">›</div>
+          </div>
+          <div class="settings-menu-item" onclick="switchSettingsTab('data')">
+            <div class="settings-menu-item-icon" style="background:#fef9f0;">💾</div>
+            <div style="flex:1">
+              <div class="settings-menu-item-title">データ管理</div>
+              <div class="settings-menu-item-desc">バックアップ・復元・リセット</div>
+            </div>
+            <div class="settings-menu-item-arrow">›</div>
+          </div>
+        </div>
+
         <div class="settings-layout">
 
           <!-- タブナビ -->
@@ -1121,6 +1187,7 @@
 
             <!-- ===== レッスン管理 ===== -->
             <div class="settings-panel active" id="spanel-lesson">
+              <div class="settings-panel-back hidden" id="spanel-lesson-back" onclick="goBackToSettingsMenu()">‹ 設定</div>
 
               <!-- コース・料金設定 -->
               <div class="settings-section">
@@ -1252,6 +1319,7 @@
 
             <!-- ===== 表示設定 ===== -->
             <div class="settings-panel" id="spanel-display">
+              <div class="settings-panel-back hidden" id="spanel-display-back" onclick="goBackToSettingsMenu()">‹ 設定</div>
 
               <!-- 外観 -->
               <div class="settings-section">
@@ -1327,6 +1395,7 @@
 
             <!-- ===== データ管理 ===== -->
             <div class="settings-panel" id="spanel-data">
+              <div class="settings-panel-back hidden" id="spanel-data-back" onclick="goBackToSettingsMenu()">‹ 設定</div>
 
               <div class="settings-section">
                 <div class="settings-section-header">
@@ -4166,11 +4235,34 @@ function saveCalendarSettings() {
   showToast('カレンダー設定を保存しました');
 }
 
+function isMobileSettings() {
+  return window.innerWidth <= 640;
+}
+
 function switchSettingsTab(name) {
   ['lesson','display','data'].forEach(t => {
     document.getElementById('stab-' + t).classList.toggle('active', t === name);
     document.getElementById('spanel-' + t).classList.toggle('active', t === name);
+    // モバイル戻るボタン表示制御
+    const backEl = document.getElementById('spanel-' + t + '-back');
+    if (backEl) backEl.classList.toggle('hidden', !isMobileSettings() || t !== name);
   });
+  if (isMobileSettings()) {
+    const menuHome = document.getElementById('settingsMenuHome');
+    if (menuHome) menuHome.classList.add('hidden');
+  }
+}
+
+function goBackToSettingsMenu() {
+  // 全パネル非表示
+  ['lesson','display','data'].forEach(t => {
+    document.getElementById('spanel-' + t).classList.remove('active');
+    document.getElementById('stab-' + t).classList.remove('active');
+    const backEl = document.getElementById('spanel-' + t + '-back');
+    if (backEl) backEl.classList.add('hidden');
+  });
+  const menuHome = document.getElementById('settingsMenuHome');
+  if (menuHome) menuHome.classList.remove('hidden');
 }
 
 function toggleHighlight(type) {
@@ -4261,7 +4353,24 @@ function showView(name) {
   document.getElementById('topActions').style.display = name === 'settings' ? 'none' : 'flex';
   closePopup();
   if (name === 'income') renderIncome();
-  if (name === 'settings') { renderSpotColorSwatches(); renderAgeLabelSettings(); }
+  if (name === 'settings') {
+    renderSpotColorSwatches(); renderAgeLabelSettings();
+    // モバイルではメニューホームを表示してパネルを隠す
+    if (isMobileSettings()) {
+      const menuHome = document.getElementById('settingsMenuHome');
+      if (menuHome) menuHome.classList.remove('hidden');
+      ['lesson','display','data'].forEach(t => {
+        document.getElementById('spanel-' + t).classList.remove('active');
+        const backEl = document.getElementById('spanel-' + t + '-back');
+        if (backEl) backEl.classList.add('hidden');
+      });
+    } else {
+      // PCでは最初のタブをアクティブに
+      const menuHome = document.getElementById('settingsMenuHome');
+      if (menuHome) menuHome.classList.add('hidden');
+      switchSettingsTab('lesson');
+    }
+  }
 }
 
 // ========== TOAST ==========

@@ -1,11 +1,11 @@
 {
-  "name": "ドラム教室 管理アプリ",
-  "short_name": "教室管理",
+  "name": "Music Scheduler",
+  "short_name": "Music Scheduler",
   "description": "ドラム教室の生徒・スケジュール・収入を一元管理するアプリ",
   "start_url": "./drum-school-app.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f0f0f",
+  "background_color": "#1a1a2e",
   "theme_color": "#E85D24",
   "lang": "ja",
   "icons": [

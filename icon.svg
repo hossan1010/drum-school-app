@@ -1,16 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="80" fill="#1a1a1a"/>
-  <!-- ドラムのシンボル -->
-  <ellipse cx="256" cy="200" rx="140" ry="55" fill="none" stroke="#E85D24" stroke-width="18"/>
-  <line x1="116" y1="200" x2="116" y2="310" stroke="#E85D24" stroke-width="18" stroke-linecap="round"/>
-  <line x1="396" y1="200" x2="396" y2="310" stroke="#E85D24" stroke-width="18" stroke-linecap="round"/>
-  <ellipse cx="256" cy="310" rx="140" ry="55" fill="#E85D24" opacity="0.15"/>
-  <ellipse cx="256" cy="310" rx="140" ry="55" fill="none" stroke="#E85D24" stroke-width="18"/>
-  <!-- スティック -->
-  <line x1="180" y1="120" x2="290" y2="175" stroke="#ff7a45" stroke-width="14" stroke-linecap="round"/>
-  <line x1="332" y1="120" x2="222" y2="175" stroke="#ff7a45" stroke-width="14" stroke-linecap="round"/>
-  <circle cx="175" cy="112" r="16" fill="#ff7a45"/>
-  <circle cx="337" cy="112" r="16" fill="#ff7a45"/>
-  <!-- 文字 -->
-  <text x="256" y="430" text-anchor="middle" font-family="sans-serif" font-size="52" font-weight="700" fill="#e8e8e8">管理</text>
+  <!-- 背景 -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="note" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff8c42"/>
+      <stop offset="100%" style="stop-color:#E85D24"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffb347"/>
+      <stop offset="100%" style="stop-color:#ff8c42"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+
+  <!-- ビームで繋がった2つの8分音符 -->
+  <!-- 左の音符の符幹 -->
+  <rect x="140" y="168" width="22" height="168" rx="11" fill="url(#note)"/>
+  <!-- 右の音符の符幹 -->
+  <rect x="298" y="136" width="22" height="200" rx="11" fill="url(#note)"/>
+
+  <!-- ビーム（横棒・上） -->
+  <rect x="140" y="168" width="180" height="30" rx="10" fill="url(#beam)"/>
+  <!-- ビーム（横棒・下） -->
+  <rect x="140" y="214" width="180" height="30" rx="10" fill="url(#beam)"/>
+
+  <!-- 左の符頭 -->
+  <ellipse cx="151" cy="342" rx="52" ry="38" transform="rotate(-18 151 342)" fill="url(#note)"/>
+  <!-- 右の符頭 -->
+  <ellipse cx="309" cy="342" rx="52" ry="38" transform="rotate(-18 309 342)" fill="url(#note)"/>
+
+  <!-- 輝きの装飾（小さな星） -->
+  <circle cx="410" cy="120" r="10" fill="#ffb347" opacity="0.7"/>
+  <circle cx="436" cy="96" r="6" fill="#ffb347" opacity="0.5"/>
+  <circle cx="388" cy="94" r="7" fill="#ffb347" opacity="0.5"/>
+  <circle cx="100" cy="390" r="8" fill="#ff8c42" opacity="0.4"/>
+  <circle cx="420" cy="390" r="6" fill="#ff8c42" opacity="0.4"/>
 </svg>
