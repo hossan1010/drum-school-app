@@ -2263,32 +2263,30 @@ function renderStudents() {
     !query || s.name.includes(query) || s.kana.includes(query)
   );
 
-  // グループ分け
-  let groups = [];
+  // 表示グループ分け（グローバルのgroupsと区別するためdisplayGroupsと命名）
+  let displayGroups = [];
   if (currentGroupBy === 'none') {
-    groups = [{ label: null, list: filtered }];
+    displayGroups = [{ label: null, list: filtered }];
   } else if (currentGroupBy === 'course') {
     const keys = [...new Set(filtered.map(s => s.course))].sort();
-    groups = keys.map(k => ({ label: k, list: filtered.filter(s => s.course === k) }));
+    displayGroups = keys.map(k => ({ label: k, list: filtered.filter(s => s.course === k) }));
   } else if (currentGroupBy === 'age') {
-    // ageCategories の順序でグループを作成（カスタム区分含む）
-    groups = ageCategories
+    displayGroups = ageCategories
       .map(cat => ({ label: cat.label, list: filtered.filter(s => s.age === cat.id) }))
       .filter(g => g.list.length > 0);
-    // 区分に未登録の生徒（古いIDなど）があればその他として末尾に
     const knownIds = new Set(ageCategories.map(c => c.id));
     const unknown = filtered.filter(s => !knownIds.has(s.age));
-    if (unknown.length) groups.push({ label: 'その他', list: unknown });
+    if (unknown.length) displayGroups.push({ label: 'その他', list: unknown });
   } else if (currentGroupBy === 'tag') {
     const allTags = getAllTags();
     const tagged = new Set();
-    groups = allTags.map(tag => {
+    displayGroups = allTags.map(tag => {
       const members = filtered.filter(s => (s.tags||[]).includes(tag));
       members.forEach(s => tagged.add(s.id));
       return { label: `# ${tag}`, list: members };
     });
     const untagged = filtered.filter(s => !tagged.has(s.id));
-    if (untagged.length) groups.push({ label: 'タグなし', list: untagged });
+    if (untagged.length) displayGroups.push({ label: 'タグなし', list: untagged });
   }
 
   const canDrag = currentGroupBy === 'none' && !query;
@@ -2298,7 +2296,7 @@ function renderStudents() {
     const ageColor = ageCat ? ageCat.color : 'var(--text3)';
     const ageBg = ageColor.startsWith('var(') ? ageColor.replace(')', '-dim)').replace('var(--','var(--') : ageColor + '22';
     const handle = canDrag ? `<div class="student-drag-handle" title="ドラッグして並び替え"><span></span><span></span><span></span></div>` : '';
-    const memberGroup = groups.find(g => g.memberIds.includes(s.id));
+    const memberGroup = groups.find(g => g.memberIds && g.memberIds.includes(s.id));
     const groupBadge = memberGroup
       ? `<span class="group-badge" style="background:${(memberGroup.color||'#60a5fa')}22;color:${memberGroup.color||'#60a5fa'}">👥 ${memberGroup.name}</span>`
       : '';
@@ -2313,7 +2311,7 @@ function renderStudents() {
         ${s.notes ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;font-style:italic">📝 ${s.notes}</div>` : ''}
       </div>
       <div class="student-tags">
-        <span class="tag" style="background:${ageColor}22;color:${ageColor}">${ageCat ? ageCat.label : s.age}</span>
+        <span class="tag" style="background:${ageBg};color:${ageColor}">${ageCat ? ageCat.label : s.age}</span>
         <span class="tag ${s.plan==='monthly'?'tag-monthly':'tag-spot'}">${s.plan==='monthly'?'月謝制':'都度払い'}</span>
         <span class="makeup-count ${s.makeupLeft===0?'zero':''}">${s.makeupLeft>0?'振替×'+s.makeupLeft:'振替なし'}</span>
       </div>
@@ -2325,7 +2323,7 @@ function renderStudents() {
     </div>`;
   };
 
-  list.innerHTML = groups.map(g => `
+  list.innerHTML = displayGroups.map(g => `
     ${g.label !== null ? `<div class="student-group-header">${g.label}<span class="student-group-count">${g.list.length}名</span></div>` : ''}
     ${g.list.length ? g.list.map(makeRow).join('') : '<div style="padding:12px 4px;font-size:12px;color:var(--text3)">該当する生徒はいません</div>'}
   `).join('');
@@ -3503,6 +3501,7 @@ function saveStudent() {
 
   if (isNew) {
     students.push({ id: nextStudentId++, name, kana, age, plan, course, fee, makeupLeft: 0, contact, tags, notes: document.getElementById('editNotes').value.trim() });
+    saveData();
     closeModal('editStudentModal');
     renderStudents(); renderIncome();
     buildStudentSelect('lessonStudent'); buildStudentSelect('absenceStudent', false);
@@ -3518,6 +3517,7 @@ function saveStudent() {
     const changed = [];
     if (prevPlan !== s.plan) changed.push(`体系: ${prevPlan==='monthly'?'月謝制':'都度'} → ${s.plan==='monthly'?'月謝制':'都度'}`);
     if (prevCourse !== s.course) changed.push(`コース: ${prevCourse} → ${s.course}`);
+    saveData();
     closeModal('editStudentModal');
     renderStudents(); renderIncome();
     buildStudentSelect('lessonStudent'); buildStudentSelect('absenceStudent', false);
