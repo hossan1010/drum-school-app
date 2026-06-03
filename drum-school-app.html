@@ -809,15 +809,17 @@
     .sidebar { display: none; }
     .app { flex-direction: column; }
     .main { flex: 1; overflow-y: auto; }
-    .content { padding: 12px; padding-bottom: 80px; }
-    .top-bar { padding: 12px 14px; }
+    .content { padding: 12px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+    .top-bar {
+      padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px;
+    }
     .page-title { font-size: 16px; }
 
     /* Bottom nav */
     .bottom-nav {
       display: flex; position: fixed; bottom: 0; left: 0; right: 0;
       background: var(--bg2); border-top: 1px solid var(--border);
-      z-index: 20; padding: 6px 0 env(safe-area-inset-bottom, 6px);
+      z-index: 20; padding: 6px 0 calc(env(safe-area-inset-bottom, 0px) + 6px);
     }
     .bottom-nav-item {
       flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -842,6 +844,7 @@
       width: 100% !important; max-height: 75vh;
       border-radius: 16px 16px 0 0; border-bottom: none;
       overflow-y: auto;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
     }
     .day-popup-lessons { max-height: 45vh; }
 
@@ -872,7 +875,7 @@
       width: 100% !important; max-width: 100% !important;
       border-radius: 16px 16px 0 0; border-bottom: none;
       max-height: 90vh; overflow-y: auto;
-      padding-bottom: env(safe-area-inset-bottom, 24px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
     }
     .form-row { grid-template-columns: 1fr; }
     .modal-actions { flex-wrap: wrap; }
