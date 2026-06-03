@@ -1439,6 +1439,24 @@
                 </div>
               </div>
 
+              <!-- フィードバック -->
+              <div class="settings-section" style="margin-top:20px">
+                <div class="settings-section-header">
+                  <div>
+                    <div class="settings-section-title">ご意見・ご要望</div>
+                    <div class="settings-section-desc">アプリの改善にご協力ください。</div>
+                  </div>
+                </div>
+                <div class="rule-card">
+                  <div class="rule-row" style="justify-content:center;padding:14px 0">
+                    <button class="btn btn-primary" onclick="openFeedbackModal()" style="width:100%;justify-content:center;gap:8px;">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                      フィードバックを送る
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div><!-- /spanel-data -->
 
           </div><!-- /settings-panels -->
@@ -1725,6 +1743,44 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('groupModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveGroup()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: フィードバック -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">ご意見・ご要望</div>
+    <button class="modal-close" onclick="closeModal('feedbackModal')">×</button>
+
+    <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:18px">
+      いただいたご意見は開発者がすべて目を通し、開発の参考にさせていただきます。受け付け専用のため返信は行っておりません。
+    </p>
+
+    <div class="form-group">
+      <label class="form-label">カテゴリ</label>
+      <select class="form-control" id="feedbackCategory">
+        <option value="改善提案">💡 改善提案</option>
+        <option value="不具合報告">🐛 不具合報告</option>
+        <option value="良いところ">👍 良いところ</option>
+        <option value="応援メッセージ">💬 応援メッセージ</option>
+        <option value="その他">📝 その他</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">内容</label>
+      <textarea class="form-control" id="feedbackBody" rows="6"
+        placeholder="良いところ、悪いところ、改善提案、応援メッセージなど"
+        style="resize:vertical;min-height:120px;line-height:1.6"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('feedbackModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="sendFeedback()" style="gap:8px">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        送信
+      </button>
     </div>
   </div>
 </div>
@@ -4241,6 +4297,23 @@ function saveCalendarSettings() {
   calWeekStart = parseInt(document.getElementById('weekStartSelect').value);
   renderCalendar();
   showToast('カレンダー設定を保存しました');
+}
+
+function openFeedbackModal() {
+  document.getElementById('feedbackBody').value = '';
+  document.getElementById('feedbackCategory').value = '改善提案';
+  document.getElementById('feedbackModal').classList.add('open');
+}
+
+function sendFeedback() {
+  const category = document.getElementById('feedbackCategory').value;
+  const body = document.getElementById('feedbackBody').value.trim();
+  if (!body) { showToast('内容を入力してください'); return; }
+  const subject = encodeURIComponent(`[Music Scheduler] ${category}`);
+  const mailBody = encodeURIComponent(`カテゴリ: ${category}\n\n${body}\n\n---\nMusic Scheduler フィードバック`);
+  window.location.href = `mailto:hossan.com@gmail.com?subject=${subject}&body=${mailBody}`;
+  closeModal('feedbackModal');
+  showToast('メールアプリを開きました');
 }
 
 function isMobileSettings() {
