@@ -1626,8 +1626,13 @@
         </div>
       </div>
     </div>
+    <!-- 編集モード時の生徒情報バナー -->
+    <div id="lessonEditBanner" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;font-size:13px;">
+      <span id="lessonEditBannerText" style="color:var(--text2)"></span>
+      <span style="font-size:11px;color:var(--text3);display:block;margin-top:2px">生徒・種別を変更する場合は削除して再追加してください</span>
+    </div>
     <!-- レッスン種別トグル（個人/グループ/体験） -->
-    <div class="form-group">
+    <div class="form-group" id="lessonTypeToggleGroup">
       <div class="lesson-type-toggle">
         <button class="lesson-type-btn active" id="typeBtnIndividual" onclick="setLessonType('individual')">個人</button>
         <button class="lesson-type-btn" id="typeBtnGroup" onclick="setLessonType('group')">グループ</button>
@@ -1654,7 +1659,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('lessonModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="addLesson()">追加する</button>
+      <button class="btn btn-primary" id="lessonSubmitBtn" onclick="submitLesson()">追加する</button>
     </div>
   </div>
 </div>
@@ -2349,6 +2354,7 @@ function renderDayPanel(ds) {
           (row.memo ? '<br><span style="font-size:10px;color:var(--text3);font-style:italic">📝 ' + row.memo + '</span>' : '') +
         '</span>' +
         '<div class="lesson-actions">' +
+          '<button class="btn btn-ghost btn-sm" onclick="openEditGroupLessonModal(' + row.groupId + ',\'' + row.date + '\',\'' + row.time + '\')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
           '<button class="btn btn-danger btn-sm" onclick="deleteGroupLesson(' + row.groupId + ',\'' + row.date + '\',\'' + row.time + '\')" title="グループ授業を削除"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' +
         '</div>' +
       '</div>';
@@ -2370,6 +2376,7 @@ function renderDayPanel(ds) {
         '<div class="lesson-actions">' +
           makeupBadge +
           (l.type !== 'trial' ? '<button class="btn btn-sm ' + (absent ? 'btn-absent-on' : 'btn-absent-off') + '" onclick="markAbsent(\'' + l.student + '\',\'' + l.date + '\')">' + (absent ? '✕ 取消' : '欠席') + '</button>' : '') +
+          '<button class="btn btn-ghost btn-sm" onclick="openEditLessonModal(' + lessonIdx + ')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
           '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + lessonIdx + ')" title="授業を削除"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' +
         '</div>' +
       '</div>';
@@ -3840,6 +3847,142 @@ function closeModal(id) {
   }
 }
 
+// ===== 予定編集 =====
+let editingLessonIdx = -1;   // -1 = 追加モード、>=0 = 編集モード
+let editingGroupKey  = null; // グループ編集時の { groupId, date, time }
+
+function submitLesson() {
+  if (editingLessonIdx >= 0 || editingGroupKey) {
+    saveEditLesson();
+  } else {
+    addLesson();
+  }
+}
+
+function openEditLessonModal(idx) {
+  const l = lessons[idx];
+  if (!l) return;
+  editingLessonIdx = idx;
+  editingGroupKey  = null;
+
+  // タイトル・ボタン変更
+  document.querySelector('#lessonModal .modal-title').textContent = '授業を編集';
+  document.getElementById('lessonSubmitBtn').textContent = '保存する';
+
+  // 日付セット（読み取り専用表示）
+  const d = new Date(l.date + 'T00:00:00');
+  document.getElementById('lessonDate').value = l.date;
+  document.getElementById('lessonDateLabel').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+
+  // 時間セット
+  setPickerTime(l.time || '10:00');
+  const et = l.endTime || '';
+  document.getElementById('lessonEndTime').value = et;
+  const endDisp = document.getElementById('endTimeDisplay');
+  if (endDisp) endDisp.textContent = et || '--:--';
+
+  // メモ
+  document.getElementById('lessonMemo').value = l.memo || '';
+
+  // 種別トグル・生徒セレクトを非表示にして、バナー表示
+  document.getElementById('lessonTypeToggleGroup').style.display = 'none';
+  document.getElementById('trialNameGroup').style.display = 'none';
+  document.getElementById('lessonStudentGroup').style.display = 'none';
+  document.getElementById('lessonGroupGroup').style.display = 'none';
+  const banner = document.getElementById('lessonEditBanner');
+  banner.style.display = 'block';
+  const typeLabel = l.type === 'trial' ? '体験' : l.type === 'group' ? `👥 ${l.groupName || 'グループ'}` : '個人';
+  document.getElementById('lessonEditBannerText').textContent =
+    `${l.student}（${typeLabel} / ${l.course}）`;
+
+  document.getElementById('lessonModal').classList.add('open');
+}
+
+function openEditGroupLessonModal(groupId, date, time) {
+  // グループの代表レッスンを探す
+  const rep = lessons.find(l => l.type === 'group' && l.groupId === groupId && l.date === date && l.time === time);
+  if (!rep) return;
+  editingLessonIdx = -1;
+  editingGroupKey  = { groupId, date, time };
+
+  document.querySelector('#lessonModal .modal-title').textContent = 'グループ授業を編集';
+  document.getElementById('lessonSubmitBtn').textContent = '保存する';
+
+  const d = new Date(date + 'T00:00:00');
+  document.getElementById('lessonDate').value = date;
+  document.getElementById('lessonDateLabel').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+
+  setPickerTime(time || '10:00');
+  const et = rep.endTime || '';
+  document.getElementById('lessonEndTime').value = et;
+  const endDisp = document.getElementById('endTimeDisplay');
+  if (endDisp) endDisp.textContent = et || '--:--';
+
+  document.getElementById('lessonMemo').value = rep.memo || '';
+
+  document.getElementById('lessonTypeToggleGroup').style.display = 'none';
+  document.getElementById('trialNameGroup').style.display = 'none';
+  document.getElementById('lessonStudentGroup').style.display = 'none';
+  document.getElementById('lessonGroupGroup').style.display = 'none';
+  const banner = document.getElementById('lessonEditBanner');
+  banner.style.display = 'block';
+  const g = groups.find(x => x.id === groupId);
+  document.getElementById('lessonEditBannerText').textContent =
+    `👥 ${rep.groupName || 'グループ'}（全メンバー）`;
+
+  document.getElementById('lessonModal').classList.add('open');
+}
+
+function saveEditLesson() {
+  const newTime    = document.getElementById('lessonTime').value;
+  const newEndTime = document.getElementById('lessonEndTime').value;
+  const newMemo    = document.getElementById('lessonMemo').value.trim();
+
+  if (editingGroupKey) {
+    // グループ全員分を更新
+    const { groupId, date, time } = editingGroupKey;
+    lessons.forEach(l => {
+      if (l.type === 'group' && l.groupId === groupId && l.date === date && l.time === time) {
+        l.time    = newTime;
+        l.endTime = newEndTime;
+        l.memo    = newMemo;
+      }
+    });
+    showToast('グループ授業を更新しました');
+  } else {
+    const l = lessons[editingLessonIdx];
+    if (!l) return;
+    l.time    = newTime;
+    l.endTime = newEndTime;
+    l.memo    = newMemo;
+    showToast('授業を更新しました');
+  }
+
+  saveData();
+  closeModal('lessonModal');
+  renderCalendar();
+  if (document.getElementById('dayPopup').classList.contains('open')) {
+    refreshPopupLessons(document.getElementById('lessonDate').value);
+  }
+}
+
+// モーダルを閉じるときに編集状態をリセット
+const _origCloseModal = window.closeModal;
+
+function closeModal(id) {
+  if (id === 'lessonModal') {
+    editingLessonIdx = -1;
+    editingGroupKey  = null;
+    document.querySelector('#lessonModal .modal-title').textContent = '授業を追加';
+    document.getElementById('lessonSubmitBtn').textContent = '追加する';
+    document.getElementById('lessonEditBanner').style.display = 'none';
+    document.getElementById('lessonTypeToggleGroup').style.display = '';
+  }
+  document.getElementById(id)?.classList.remove('open');
+}
+
 function addLesson() {
   const date    = document.getElementById('lessonDate').value;
   const time    = document.getElementById('lessonTime').value;
@@ -4283,6 +4426,7 @@ function refreshPopupLessons(date) {
       '<div style="display:flex;gap:4px;align-items:center;">' +
         makeupBadge +
         (l.type !== 'trial' ? '<button class="btn btn-sm ' + (absent ? 'btn-absent-on' : 'btn-absent-off') + '" onclick="markAbsent(\'' + l.student + '\',\'' + l.date + '\')">' + (absent ? '✕ 取消' : '欠席') + '</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" onclick="closePopup();openEditLessonModal(' + lessonIdx + ')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + lessonIdx + ')" title="削除"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' +
       '</div>' +
     '</div>';
