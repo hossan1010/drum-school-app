@@ -1512,17 +1512,17 @@
   <div class="modal">
     <div class="modal-title">授業を追加</div>
     <button class="modal-close" onclick="closeModal('lessonModal')">×</button>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">日付</label>
-        <div class="form-control" id="lessonDateDisplay" style="display:flex;align-items:center;gap:6px;cursor:default;background:var(--bg4);color:var(--text2);">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span id="lessonDateLabel">-</span>
-        </div>
-        <input type="hidden" id="lessonDate">
+    <div class="form-group">
+      <label class="form-label">日付</label>
+      <div class="form-control" id="lessonDateDisplay" style="display:flex;align-items:center;gap:6px;cursor:default;background:var(--bg4);color:var(--text2);">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="lessonDateLabel">-</span>
       </div>
-      <div class="form-group">
-        <label class="form-label">時間</label>
+      <input type="hidden" id="lessonDate">
+    </div>
+    <div class="form-row" style="align-items:flex-end;gap:8px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">開始時間</label>
         <input type="hidden" id="lessonTime" value="10:00">
         <div class="time-picker-wrap">
           <button class="time-step-btn" onclick="shiftTime(-1)" tabindex="-1">‹</button>
@@ -1531,7 +1531,19 @@
         </div>
         <div class="time-picker-dropdown" id="timePickerDropdown"></div>
       </div>
+      <div style="padding-bottom:10px;color:var(--text3);font-size:16px;flex-shrink:0">→</div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">終了時間</label>
+        <input type="hidden" id="lessonEndTime" value="11:00">
+        <div class="time-picker-wrap">
+          <button class="time-step-btn" onclick="shiftEndTime(-1)" tabindex="-1">‹</button>
+          <div class="time-display" id="endTimeDisplay" onclick="openEndTimePicker()">11:00</div>
+          <button class="time-step-btn" onclick="shiftEndTime(1)" tabindex="-1">›</button>
+        </div>
+        <div class="time-picker-dropdown" id="endTimePickerDropdown"></div>
+      </div>
     </div>
+    <div style="height:10px"></div>
     <!-- レッスン種別トグル（個人/グループ/体験） -->
     <div class="form-group">
       <div class="lesson-type-toggle">
@@ -2214,7 +2226,7 @@ function renderDayPanel(ds) {
   dl.sort((a,b)=>a.time.localeCompare(b.time)).forEach(l => {
     if (l.type === 'group') {
       const key = `${l.groupId}_${l.time}`;
-      if (!seenGrps.has(key)) { seenGrps.add(key); rows.push({ isGroup: true, groupId: l.groupId, groupName: l.groupName, time: l.time, course: l.course, memo: l.memo, date: l.date }); }
+      if (!seenGrps.has(key)) { seenGrps.add(key); rows.push({ isGroup: true, groupId: l.groupId, groupName: l.groupName, time: l.time, endTime: l.endTime, course: l.course, memo: l.memo, date: l.date }); }
     } else {
       rows.push({ isGroup: false, lesson: l });
     }
@@ -2228,7 +2240,7 @@ function renderDayPanel(ds) {
       const memberNames = memberLessons.map(l => l.student).join('、');
       const firstIdx = lessons.indexOf(memberLessons[0]);
       return '<div class="lesson-row">' +
-        '<span class="lesson-time">' + row.time + '</span>' +
+        '<span class="lesson-time">' + row.time + (row.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+row.endTime+'</span>' : '') + '</span>' +
         '<span class="lesson-student">' +
           '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:' + color + '22;color:' + color + ';font-weight:600;margin-right:4px">👥 グループ</span>' +
           row.groupName +
@@ -2250,7 +2262,7 @@ function renderDayPanel(ds) {
         ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#f87171;color:#fff;font-family:var(--mono);font-weight:600;flex-shrink:0;">振替</span>'
         : '';
       return '<div class="lesson-row" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);' : '') + '">' +
-        '<span class="lesson-time">' + l.time + '</span>' +
+        '<span class="lesson-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
         '<span class="lesson-student">' + l.student +
           '<br><span class="lesson-course" style="color:' + courseColor + '">' + l.course + '</span>' +
           (l.memo ? '<br><span style="font-size:10px;color:var(--text3);font-style:italic">📝 ' + l.memo + '</span>' : '') +
@@ -3702,6 +3714,10 @@ function openLessonModal(ds) {
   const wday = '日月火水木金土'[d.getDay()];
   document.getElementById('lessonDateLabel').textContent = `${d.getMonth()+1}月${d.getDate()}日（${wday}）`;
   setPickerTime('10:00');
+  // 終了時間を開始+60分で初期化
+  document.getElementById('lessonEndTime').value = '11:00';
+  const endDisp = document.getElementById('endTimeDisplay');
+  if (endDisp) endDisp.textContent = '11:00';
   resetTrialLesson();
   setLessonType('individual');
   document.getElementById('lessonMemo').value = '';
@@ -3725,14 +3741,15 @@ function closeModal(id) {
 }
 
 function addLesson() {
-  const date = document.getElementById('lessonDate').value;
-  const time = document.getElementById('lessonTime').value;
-  const memo = document.getElementById('lessonMemo').value.trim();
+  const date    = document.getElementById('lessonDate').value;
+  const time    = document.getElementById('lessonTime').value;
+  const endTime = document.getElementById('lessonEndTime').value;
+  const memo    = document.getElementById('lessonMemo').value.trim();
   if (!date) { showToast('日付を確認してください'); return; }
 
   if (currentLessonType === 'trial') {
     const trialName = document.getElementById('trialName').value.trim() || '体験者';
-    lessons.push({ date, time, student: trialName, type: 'trial', course: '体験', memo });
+    lessons.push({ date, time, endTime, student: trialName, type: 'trial', course: '体験', memo });
     closeModal('lessonModal'); renderCalendar();
     showToast(`${trialName} の体験レッスンを追加しました`);
   } else if (currentLessonType === 'group') {
@@ -3744,7 +3761,7 @@ function addLesson() {
     g.memberIds.forEach(mid => {
       const s = students.find(x => x.id === mid);
       if (!s || s.suspended) return;
-      lessons.push({ date, time, student: s.name, type: 'group', course: courseShort, groupId: g.id, groupName: g.name, memo });
+      lessons.push({ date, time, endTime, student: s.name, type: 'group', course: courseShort, groupId: g.id, groupName: g.name, memo });
     });
     saveData(); closeModal('lessonModal'); renderCalendar();
     showToast(`${g.name} のグループレッスンを追加しました`);
@@ -3753,7 +3770,7 @@ function addLesson() {
     if (!sid) { showToast('生徒を選択してください'); return; }
     const s = students.find(s => s.id === parseInt(sid));
     if (!s) return;
-    lessons.push({ date, time, student: s.name, type: 'normal', course: s.course.replace('コース',''), memo });
+    lessons.push({ date, time, endTime, student: s.name, type: 'normal', course: s.course.replace('コース',''), memo });
     saveData(); closeModal('lessonModal'); renderCalendar();
     showToast(`${s.name} の授業を追加しました`);
   }
@@ -4158,7 +4175,7 @@ function refreshPopupLessons(date) {
       ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#f87171;color:#fff;font-family:var(--mono);font-weight:600;flex-shrink:0;">振替</span>'
       : '';
     return '<div class="day-popup-lesson" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.05)' : '') + '">' +
-      '<span class="day-popup-time">' + l.time + '</span>' +
+      '<span class="day-popup-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
       '<div style="flex:1"><div class="day-popup-name">' + l.student + '</div>' +
       '<div class="day-popup-course" style="color:' + courseColor + '">' + l.course + '</div>' +
       (l.memo ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-style:italic">📝 ' + l.memo + '</div>' : '') +
@@ -4266,10 +4283,27 @@ function closeTimePickerOutside(e) {
 }
 
 function selectTime(t) {
+  const prevStart = document.getElementById('lessonTime').value;
+  const prevEnd   = document.getElementById('lessonEndTime').value;
+  // 開始〜終了の差分を保持して終了時間を自動追従
+  const [ph, pm] = prevStart.split(':').map(Number);
+  const [eh, em] = prevEnd.split(':').map(Number);
+  const prevDiff = (eh * 60 + em) - (ph * 60 + pm);
+
   document.getElementById('lessonTime').value = t;
   const disp = document.getElementById('timeDisplay');
   if (disp) disp.textContent = t;
   closeTimePicker();
+
+  // 終了時間を同じ差分で追従（差分が正の場合のみ）
+  if (prevDiff > 0) {
+    const [nh, nm] = t.split(':').map(Number);
+    const newEndMin = nh * 60 + nm + prevDiff;
+    const ne = `${String(Math.floor(newEndMin/60)%24).padStart(2,'0')}:${String(newEndMin%60).padStart(2,'0')}`;
+    document.getElementById('lessonEndTime').value = ne;
+    const endDisp = document.getElementById('endTimeDisplay');
+    if (endDisp) endDisp.textContent = ne;
+  }
 }
 
 function shiftTime(dir) {
@@ -4279,6 +4313,56 @@ function shiftTime(dir) {
   if (idx === -1) idx = 0;
   idx = (idx + dir + slots.length) % slots.length;
   selectTime(slots[idx]);
+}
+
+// ===== 終了時間ピッカー =====
+function openEndTimePicker() {
+  const dropdown = document.getElementById('endTimePickerDropdown');
+  if (dropdown.classList.contains('open')) { closeEndTimePicker(); return; }
+  const current = document.getElementById('lessonEndTime').value;
+  const slots = getTimeSlots();
+  dropdown.innerHTML = slots.map(t =>
+    `<div class="time-option${t===current?' selected':''}" onclick="selectEndTime('${t}')">${t}</div>`
+  ).join('');
+  const wrap = document.querySelectorAll('.time-picker-wrap')[1];
+  const rect = wrap.getBoundingClientRect();
+  dropdown.style.position = 'fixed';
+  dropdown.style.top  = (rect.bottom + 4) + 'px';
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.width = rect.width + 'px';
+  dropdown.classList.add('open');
+  setTimeout(() => {
+    const sel = dropdown.querySelector('.selected');
+    if (sel) sel.scrollIntoView({ block: 'center' });
+  }, 30);
+  setTimeout(() => document.addEventListener('click', closeEndTimePickerOutside, { once: true }), 10);
+}
+
+function closeEndTimePicker() {
+  document.getElementById('endTimePickerDropdown').classList.remove('open');
+}
+
+function closeEndTimePickerOutside(e) {
+  const dd = document.getElementById('endTimePickerDropdown');
+  const wraps = document.querySelectorAll('.time-picker-wrap');
+  const wrap = wraps[1];
+  if (!wrap?.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+}
+
+function selectEndTime(t) {
+  document.getElementById('lessonEndTime').value = t;
+  const disp = document.getElementById('endTimeDisplay');
+  if (disp) disp.textContent = t;
+  closeEndTimePicker();
+}
+
+function shiftEndTime(dir) {
+  const slots = getTimeSlots();
+  const current = document.getElementById('lessonEndTime').value;
+  let idx = slots.indexOf(current);
+  if (idx === -1) idx = 0;
+  idx = (idx + dir + slots.length) % slots.length;
+  selectEndTime(slots[idx]);
 }
 
 // ========== TIME STEP ==========
@@ -4345,6 +4429,37 @@ function goBackToSettingsMenu() {
   const menuHome = document.getElementById('settingsMenuHome');
   if (menuHome) menuHome.classList.remove('hidden');
 }
+
+// ===== スワイプバック =====
+(function() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const SWIPE_MIN_X = 60;   // 最低横移動量(px)
+  const SWIPE_MAX_Y = 80;   // 縦ズレの許容量(px)
+  const EDGE_ZONE = 60;     // 画面左端からのエッジゾーン(px) — エッジ外でも動作させたいためゆるめ
+
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!isMobileSettings()) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+
+    // 左→右スワイプ かつ 縦ズレ小さい
+    if (dx > SWIPE_MIN_X && dy < SWIPE_MAX_Y) {
+      // 設定パネルがアクティブなら戻る
+      const activePanel = ['lesson','display','data'].find(
+        t => document.getElementById('spanel-' + t).classList.contains('active')
+      );
+      if (activePanel) {
+        goBackToSettingsMenu();
+      }
+    }
+  }, { passive: true });
+})();
 
 function toggleHighlight(type) {
   if (type === 'sat') {
