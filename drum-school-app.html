@@ -1421,7 +1421,15 @@
                 <div class="settings-section-header">
                   <div>
                     <div class="settings-section-title">教室予約設定</div>
-                    <div class="settings-section-desc">レッスンに「要予約」フラグを付けて、未予約の場合に通知を受け取れます。URLを空にするとフラグ機能が無効になります。</div>
+                    <div class="settings-section-desc">
+                      レッスンによっては、生徒の予約とは別に<strong>教室（スタジオ）を自分で予約しなければならない</strong>場合があります。この機能はそのような教室予約の管理をサポートします。<br><br>
+                      <strong>使い方の流れ：</strong><br>
+                      ① 教室予約サイトのURLを入力して保存する<br>
+                      ② レッスンを追加する際に「🏠 教室予約が必要」にチェックを入れる<br>
+                      ③ スケジュール画面で「未予約」バッジが表示され、タップすると予約サイトへ移動できる<br>
+                      ④ 予約完了後は「✓」を押して予約済みに変更する<br>
+                      ⑤ 予約し忘れがあるとアプリ内でお知らせが表示される
+                    </div>
                   </div>
                 </div>
                 <div class="rule-card">
@@ -1429,6 +1437,7 @@
                     <span class="rule-label">予約サイトURL</span>
                     <input type="url" id="bookingUrlInput" class="form-control" placeholder="https://..." style="max-width:260px;font-size:13px;flex:1" oninput="onBookingUrlInput(this.value)">
                   </div>
+                  <div id="bookingUrlError" style="display:none;color:var(--red);font-size:12px;padding:4px 0 0 2px">https:// または http:// から始まる正しいURLを入力してください</div>
                   <div id="bookingSubSettings" style="opacity:0.35;pointer-events:none">
                     <div class="rule-row">
                       <span class="rule-label">通知タイミング</span>
@@ -5337,15 +5346,32 @@ function jumpToBookingDate(dateStr) {
 }
 
 function onBookingUrlInput(val) {
-  const sub = document.getElementById('bookingSubSettings');
+  const sub    = document.getElementById('bookingSubSettings');
+  const errEl  = document.getElementById('bookingUrlError');
   if (!sub) return;
   const hasUrl = val.trim().length > 0;
   sub.style.opacity       = hasUrl ? '1'    : '0.35';
   sub.style.pointerEvents = hasUrl ? 'auto' : 'none';
+  if (errEl) errEl.style.display = 'none'; // 入力するたびにエラーを消す
 }
 
 function saveBookingSettings() {
   const urlVal         = (document.getElementById('bookingUrlInput')?.value || '').trim();
+  const urlErrEl       = document.getElementById('bookingUrlError');
+
+  // URL バリデーション
+  if (urlVal) {
+    try {
+      const u = new URL(urlVal);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error();
+    } catch {
+      if (urlErrEl) urlErrEl.style.display = 'block';
+      document.getElementById('bookingUrlInput')?.focus();
+      return;
+    }
+  }
+  if (urlErrEl) urlErrEl.style.display = 'none';
+
   const daysVal        = parseInt(document.getElementById('bookingNotifyDaysInput')?.value || '1');
   const tapModeVal     = document.getElementById('bookingTapModeSelect')?.value || 'single';
   const defCheckedVal  = !!(document.getElementById('bookingDefaultCheckedToggle')?.checked);
