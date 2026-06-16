@@ -451,6 +451,21 @@
     display:flex; flex-direction:column; overflow:hidden;
     margin-top:4px;
   }
+  .icon-tabs-wrap {
+    position:relative; flex-shrink:0;
+  }
+  .icon-tabs-fade {
+    position:absolute; top:0; bottom:0; width:36px;
+    pointer-events:none; z-index:5; transition:opacity 0.2s;
+  }
+  .icon-tabs-fade-right {
+    right:0;
+    background:linear-gradient(to right, transparent, var(--bg2) 80%);
+  }
+  .icon-tabs-fade-left {
+    left:0;
+    background:linear-gradient(to left, transparent, var(--bg2) 80%);
+  }
   .icon-picker-tabs {
     display:flex; overflow-x:auto; padding:8px 8px 0;
     gap:4px; flex-shrink:0; scrollbar-width:none;
@@ -2054,7 +2069,11 @@
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="icon-picker-panel" id="iconPickerPanel" style="display:none" onclick="event.stopPropagation()">
-          <div class="icon-picker-tabs" id="iconPickerTabs"></div>
+          <div class="icon-tabs-wrap">
+            <div class="icon-picker-tabs" id="iconPickerTabs" onscroll="updateIconTabsFade()"></div>
+            <div class="icon-tabs-fade icon-tabs-fade-left" id="iconTabsFadeLeft" style="opacity:0"></div>
+            <div class="icon-tabs-fade icon-tabs-fade-right" id="iconTabsFadeRight"></div>
+          </div>
           <div class="icon-picker-grid" id="iconPickerGrid"></div>
         </div>
       </div>
@@ -3568,6 +3587,23 @@ function renderIconPicker() {
   gridEl.innerHTML = icons.map(em =>
     `<button type="button" class="${em===editingCourseIcon?'selected':''}" onclick="selectCourseIcon('${em}')" title="${em}">${em}</button>`
   ).join('');
+  // アクティブタブをスクロール位置に合わせてスクロール
+  requestAnimationFrame(() => {
+    const activeBtn = tabsEl.querySelector('.icon-tab-btn.active');
+    if (activeBtn) activeBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    updateIconTabsFade();
+  });
+}
+
+function updateIconTabsFade() {
+  const el = document.getElementById('iconPickerTabs');
+  const fadeL = document.getElementById('iconTabsFadeLeft');
+  const fadeR = document.getElementById('iconTabsFadeRight');
+  if (!el || !fadeL || !fadeR) return;
+  const atLeft  = el.scrollLeft < 4;
+  const atRight = el.scrollLeft >= el.scrollWidth - el.clientWidth - 4;
+  fadeL.style.opacity = atLeft  ? '0' : '1';
+  fadeR.style.opacity = atRight ? '0' : '1';
 }
 
 function switchIconGroup(idx) {
