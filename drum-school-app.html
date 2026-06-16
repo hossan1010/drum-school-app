@@ -918,17 +918,19 @@
   .fee-auto-badge.visible { opacity: 1; }
 
   /* Day popup */
-  .day-popup { position: fixed; z-index: 150; background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 0; width: 320px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: none; overflow: hidden; }
+  .day-popup { position: fixed; z-index: 150; background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 0; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: none; overflow: hidden; }
   .day-popup.open { display: block; }
   .day-popup-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
   .day-popup-date { font-size: 14px; font-weight: 700; }
   .day-popup-close { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--bg3); border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
   .day-popup-close:hover { background: var(--bg4); color: var(--text); }
-  .day-popup-lessons { padding: 10px 12px; max-height: 240px; overflow-y: auto; }
-  .day-popup-lesson { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg3); border: 1px solid var(--border); margin-bottom: 6px; }
-  .day-popup-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 38px; flex-shrink: 0; }
-  .day-popup-name { font-size: 13px; font-weight: 500; flex: 1; }
-  .day-popup-course { font-size: 10px; color: var(--text3); }
+  .day-popup-lessons { padding: 10px 12px; max-height: 320px; overflow-y: auto; }
+  .day-popup-lesson { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg3); border: 1px solid var(--border); margin-bottom: 6px; }
+  .day-popup-lesson-top { display: flex; align-items: center; gap: 8px; }
+  .day-popup-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 42px; flex-shrink: 0; line-height: 1.4; }
+  .day-popup-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-popup-course { font-size: 11px; color: var(--text3); }
+  .day-popup-lesson-btns { display: flex; gap: 4px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
   .day-popup-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
   .popup-empty { padding: 20px; text-align: center; color: var(--text3); font-size: 12px; }
   .popup-backdrop { display: none; position: fixed; inset: 0; z-index: 140; pointer-events: none; }
@@ -1826,7 +1828,7 @@
       振替
     </button>
     <button class="bottom-nav-item" onclick="showView('students')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       生徒
     </button>
     <button class="bottom-nav-item" onclick="showView('income')">
@@ -5093,12 +5095,15 @@ function refreshPopupLessons(date) {
           '<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0;border:1px solid var(--green)" onclick="markBooked(' + lessonIdx + ')" title="予約済にする">✓</span>')
       : '';
     return '<div class="day-popup-lesson" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.05)' : '') + '">' +
-      '<span class="day-popup-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
-      '<div style="flex:1"><div class="day-popup-name">' + l.student + '</div>' +
-      '<div class="day-popup-course" style="color:' + courseColor + '">' + l.course + '</div>' +
-      (l.memo ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-style:italic">📝 ' + l.memo + '</div>' : '') +
+      '<div class="day-popup-lesson-top">' +
+        '<span class="day-popup-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="day-popup-name">' + l.student + '</div>' +
+          '<div class="day-popup-course" style="color:' + courseColor + '">' + l.course + '</div>' +
+          (l.memo ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ' + l.memo + '</div>' : '') +
+        '</div>' +
       '</div>' +
-      '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">' +
+      '<div class="day-popup-lesson-btns">' +
         makeupBadge + bookingBadge +
         (l.type !== 'trial' ? '<button class="btn btn-sm ' + (absent ? 'btn-absent-on' : 'btn-absent-off') + '" onclick="markAbsent(\'' + l.student + '\',\'' + l.date + '\')">' + (absent ? '✕ 取消' : '欠席') + '</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="closePopup();openEditLessonModal(' + lessonIdx + ')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
@@ -5225,6 +5230,11 @@ function confirmDrumPicker() {
   if (drumPickerTarget === 'start') {
     selectTime(timeStr);
   } else {
+    const startTime = document.getElementById('lessonTime').value;
+    if (timeStr <= startTime) {
+      showToast('終了時間は開始時間より後にしてください');
+      return;
+    }
     selectEndTime(timeStr);
   }
   closeDrumPicker();
@@ -5311,11 +5321,12 @@ function openEndTimePicker() {
   if (window.innerWidth <= 640) { openDrumPicker('end'); return; }
   const dropdown = document.getElementById('endTimePickerDropdown');
   if (dropdown.classList.contains('open')) { closeEndTimePicker(); return; }
-  const current = document.getElementById('lessonEndTime').value;
-  const slots = getTimeSlots();
-  dropdown.innerHTML = slots.map(t =>
-    `<div class="time-option${t===current?' selected':''}" onclick="selectEndTime('${t}')">${t}</div>`
-  ).join('');
+  const current  = document.getElementById('lessonEndTime').value;
+  const startTime = document.getElementById('lessonTime').value;
+  const slots = getTimeSlots().filter(t => t > startTime);
+  dropdown.innerHTML = slots.length
+    ? slots.map(t => `<div class="time-option${t===current?' selected':''}" onclick="selectEndTime('${t}')">${t}</div>`).join('')
+    : '<div style="padding:10px;color:var(--text3);font-size:12px;text-align:center">選択可能な時間がありません</div>';
   const wrap = document.querySelectorAll('.time-picker-wrap')[1];
   const rect = wrap.getBoundingClientRect();
   dropdown.style.position = 'fixed';
@@ -5349,11 +5360,13 @@ function selectEndTime(t) {
 }
 
 function shiftEndTime(dir) {
-  const slots = getTimeSlots();
+  const startTime = document.getElementById('lessonTime').value;
+  const slots = getTimeSlots().filter(t => t > startTime);
+  if (!slots.length) return;
   const current = document.getElementById('lessonEndTime').value;
   let idx = slots.indexOf(current);
-  if (idx === -1) idx = 0;
-  idx = (idx + dir + slots.length) % slots.length;
+  if (idx === -1) idx = dir > 0 ? 0 : slots.length - 1;
+  else idx = Math.max(0, Math.min(slots.length - 1, idx + dir));
   selectEndTime(slots[idx]);
 }
 
