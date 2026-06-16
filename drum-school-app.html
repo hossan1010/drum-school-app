@@ -3590,7 +3590,10 @@ function renderIconPicker() {
   // アクティブタブをスクロール位置に合わせてスクロール
   requestAnimationFrame(() => {
     const activeBtn = tabsEl.querySelector('.icon-tab-btn.active');
-    if (activeBtn) activeBtn.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    if (activeBtn) {
+      const scrollTarget = activeBtn.offsetLeft - tabsEl.clientWidth / 2 + activeBtn.offsetWidth / 2;
+      tabsEl.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+    }
     updateIconTabsFade();
   });
 }
