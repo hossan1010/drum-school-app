@@ -1390,7 +1390,7 @@
                         <option value="10">10分単位</option>
                         <option value="15">15分単位</option>
                         <option value="30" selected>30分単位</option>
-                        <option value="45">45分単位</option>
+
                         <option value="60">60分単位</option>
                       </select>
                     </div>
@@ -1398,6 +1398,37 @@
                   <div class="rule-row">
                     <span class="rule-label">プレビュー（現在の設定）</span>
                     <span class="rule-badge" id="timeStepPreview">30分単位（例: 10:00, 10:30, 11:00）</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 教室予約設定 -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div>
+                    <div class="settings-section-title">教室予約設定</div>
+                    <div class="settings-section-desc">レッスンに「要予約」フラグを付けて、未予約の場合に通知を受け取れます。URLを空にするとフラグ機能が無効になります。</div>
+                  </div>
+                </div>
+                <div class="rule-card">
+                  <div class="rule-row" style="flex-wrap:wrap;gap:8px">
+                    <span class="rule-label">予約サイトURL</span>
+                    <input type="url" id="bookingUrlInput" class="form-control" placeholder="https://..." style="max-width:260px;font-size:13px;flex:1">
+                  </div>
+                  <div class="rule-row">
+                    <span class="rule-label">通知タイミング</span>
+                    <div class="rule-edit-row">
+                      <select id="bookingNotifySelect">
+                        <option value="0">当日</option>
+                        <option value="1">前日</option>
+                        <option value="2">2日前</option>
+                        <option value="3">3日前</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="rule-row" style="gap:8px;flex-wrap:wrap">
+                    <button class="btn btn-ghost btn-sm" onclick="requestNotificationPermission()" id="notifyPermBtn">🔔 通知を許可する</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveBookingSettings()">保存する</button>
                   </div>
                 </div>
               </div>
@@ -1656,6 +1687,12 @@
     <div class="form-group">
       <label class="form-label">メモ（任意）</label>
       <textarea class="form-control" id="lessonMemo" rows="2" placeholder="例：初回レッスン・教材持参" style="resize:vertical;min-height:56px;line-height:1.6"></textarea>
+    </div>
+    <div class="form-group" id="needsBookingGroup" style="display:none">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;padding:4px 0">
+        <input type="checkbox" id="needsBookingCheck" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0">
+        <span>🏠 教室予約が必要</span>
+      </label>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('lessonModal')">キャンセル</button>
@@ -1974,6 +2011,8 @@ let spotColor = '#a78bfa'; // 都度払いのカレンダー表示色
 let makeupRules = { maxCount: 1, deadline: 'next_month' };
 let timeStepMinutes = 30; // 授業時間の入力単位（分）
 let calWeekStart = 0;      // 0=日曜始まり, 1=月曜始まり
+let bookingUrl       = ''; // 教室予約サイトURL
+let bookingNotifyDays = 1; // 何日前に通知 (0=当日,1=前日,2=2日前,3=3日前)
 let calSatColor  = false;  // 土曜を青系で表示
 let calSunColor  = false;  // 日曜を赤系で表示
 let calHolidayColor = false; // 祝日を赤系で表示
@@ -2367,6 +2406,11 @@ function renderDayPanel(ds) {
       const makeupBadge = isMakeup
         ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#f87171;color:#fff;font-family:var(--mono);font-weight:600;flex-shrink:0;">振替</span>'
         : '';
+      const bookingBadge = (l.needsBooking && bookingUrl)
+        ? (l.booked
+          ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで取消）">🏠 予約済</span>'
+          : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="未予約（タップで予約済にする）">🏠 未予約</span>')
+        : '';
       return '<div class="lesson-row" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);' : '') + '">' +
         '<span class="lesson-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
         '<span class="lesson-student">' + l.student +
@@ -2374,7 +2418,7 @@ function renderDayPanel(ds) {
           (l.memo ? '<br><span style="font-size:10px;color:var(--text3);font-style:italic">📝 ' + l.memo + '</span>' : '') +
         '</span>' +
         '<div class="lesson-actions">' +
-          makeupBadge +
+          makeupBadge + bookingBadge +
           (l.type !== 'trial' ? '<button class="btn btn-sm ' + (absent ? 'btn-absent-on' : 'btn-absent-off') + '" onclick="markAbsent(\'' + l.student + '\',\'' + l.date + '\')">' + (absent ? '✕ 取消' : '欠席') + '</button>' : '') +
           '<button class="btn btn-ghost btn-sm" onclick="openEditLessonModal(' + lessonIdx + ')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
           '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + lessonIdx + ')" title="授業を削除"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' +
@@ -3828,6 +3872,16 @@ function openLessonModal(ds) {
   resetTrialLesson();
   setLessonType('individual');
   document.getElementById('lessonMemo').value = '';
+  // 教室予約チェックボックス（URLが設定済みの場合のみ表示）
+  const nbGrp = document.getElementById('needsBookingGroup');
+  const nbChk = document.getElementById('needsBookingCheck');
+  if (bookingUrl) {
+    nbGrp.style.display = '';
+    nbChk.checked = false;
+  } else {
+    nbGrp.style.display = 'none';
+    nbChk.checked = false;
+  }
   buildStudentSelect('lessonStudent');
   buildGroupSelect();
   document.getElementById('lessonModal').classList.add('open');
@@ -3885,6 +3939,17 @@ function openEditLessonModal(idx) {
   // メモ
   document.getElementById('lessonMemo').value = l.memo || '';
 
+  // 教室予約チェックボックス
+  const nbGroup = document.getElementById('needsBookingGroup');
+  const nbCheck = document.getElementById('needsBookingCheck');
+  if (bookingUrl && l.type !== 'trial') {
+    nbGroup.style.display = '';
+    nbCheck.checked = !!(l.needsBooking);
+  } else {
+    nbGroup.style.display = 'none';
+    nbCheck.checked = false;
+  }
+
   // 種別トグル・生徒セレクトを非表示にして、バナー表示
   document.getElementById('lessonTypeToggleGroup').style.display = 'none';
   document.getElementById('trialNameGroup').style.display = 'none';
@@ -3922,13 +3987,24 @@ function openEditGroupLessonModal(groupId, date, time) {
 
   document.getElementById('lessonMemo').value = rep.memo || '';
 
+  // 教室予約チェックボックス
+  const nbGroupEl = document.getElementById('needsBookingGroup');
+  const nbCheckEl = document.getElementById('needsBookingCheck');
+  if (bookingUrl) {
+    nbGroupEl.style.display = '';
+    nbCheckEl.checked = !!(rep.needsBooking);
+  } else {
+    nbGroupEl.style.display = 'none';
+    nbCheckEl.checked = false;
+  }
+
   document.getElementById('lessonTypeToggleGroup').style.display = 'none';
   document.getElementById('trialNameGroup').style.display = 'none';
   document.getElementById('lessonStudentGroup').style.display = 'none';
   document.getElementById('lessonGroupGroup').style.display = 'none';
   const banner = document.getElementById('lessonEditBanner');
   banner.style.display = 'block';
-  const g = groups.find(x => x.id === groupId);
+  const g2 = groups.find(x => x.id === groupId);
   document.getElementById('lessonEditBannerText').textContent =
     `👥 ${rep.groupName || 'グループ'}（全メンバー）`;
 
@@ -3940,6 +4016,8 @@ function saveEditLesson() {
   const newEndTime = document.getElementById('lessonEndTime').value;
   const newMemo    = document.getElementById('lessonMemo').value.trim();
 
+  const newNeedsBooking = bookingUrl ? !!(document.getElementById('needsBookingCheck')?.checked) : undefined;
+
   if (editingGroupKey) {
     // グループ全員分を更新
     const { groupId, date, time } = editingGroupKey;
@@ -3948,6 +4026,7 @@ function saveEditLesson() {
         l.time    = newTime;
         l.endTime = newEndTime;
         l.memo    = newMemo;
+        if (newNeedsBooking !== undefined) l.needsBooking = newNeedsBooking;
       }
     });
     showToast('グループ授業を更新しました');
@@ -3957,6 +4036,7 @@ function saveEditLesson() {
     l.time    = newTime;
     l.endTime = newEndTime;
     l.memo    = newMemo;
+    if (newNeedsBooking !== undefined) l.needsBooking = newNeedsBooking;
     showToast('授業を更新しました');
   }
 
@@ -3990,9 +4070,11 @@ function addLesson() {
   const memo    = document.getElementById('lessonMemo').value.trim();
   if (!date) { showToast('日付を確認してください'); return; }
 
+  const needsBooking = bookingUrl ? !!(document.getElementById('needsBookingCheck')?.checked) : false;
+
   if (currentLessonType === 'trial') {
     const trialName = document.getElementById('trialName').value.trim() || '体験者';
-    lessons.push({ date, time, endTime, student: trialName, type: 'trial', course: '体験', memo });
+    lessons.push({ date, time, endTime, student: trialName, type: 'trial', course: '体験', memo, needsBooking: false, booked: false });
     closeModal('lessonModal'); renderCalendar();
     showToast(`${trialName} の体験レッスンを追加しました`);
   } else if (currentLessonType === 'group') {
@@ -4004,7 +4086,7 @@ function addLesson() {
     g.memberIds.forEach(mid => {
       const s = students.find(x => x.id === mid);
       if (!s || s.suspended) return;
-      lessons.push({ date, time, endTime, student: s.name, type: 'group', course: courseShort, groupId: g.id, groupName: g.name, memo });
+      lessons.push({ date, time, endTime, student: s.name, type: 'group', course: courseShort, groupId: g.id, groupName: g.name, memo, needsBooking, booked: false });
     });
     saveData(); closeModal('lessonModal'); renderCalendar();
     showToast(`${g.name} のグループレッスンを追加しました`);
@@ -4013,7 +4095,7 @@ function addLesson() {
     if (!sid) { showToast('生徒を選択してください'); return; }
     const s = students.find(s => s.id === parseInt(sid));
     if (!s) return;
-    lessons.push({ date, time, endTime, student: s.name, type: 'normal', course: s.course.replace('コース',''), memo });
+    lessons.push({ date, time, endTime, student: s.name, type: 'normal', course: s.course.replace('コース',''), memo, needsBooking, booked: false });
     saveData(); closeModal('lessonModal'); renderCalendar();
     showToast(`${s.name} の授業を追加しました`);
   }
@@ -4417,14 +4499,19 @@ function refreshPopupLessons(date) {
     const makeupBadge = isMakeup
       ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#f87171;color:#fff;font-family:var(--mono);font-weight:600;flex-shrink:0;">振替</span>'
       : '';
+    const bookingBadge = (l.needsBooking && bookingUrl)
+      ? (l.booked
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで取消）">🏠 予約済</span>'
+        : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="未予約（タップで予約済にする）">🏠 未予約</span>')
+      : '';
     return '<div class="day-popup-lesson" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.05)' : '') + '">' +
       '<span class="day-popup-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
       '<div style="flex:1"><div class="day-popup-name">' + l.student + '</div>' +
       '<div class="day-popup-course" style="color:' + courseColor + '">' + l.course + '</div>' +
       (l.memo ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-style:italic">📝 ' + l.memo + '</div>' : '') +
       '</div>' +
-      '<div style="display:flex;gap:4px;align-items:center;">' +
-        makeupBadge +
+      '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">' +
+        makeupBadge + bookingBadge +
         (l.type !== 'trial' ? '<button class="btn btn-sm ' + (absent ? 'btn-absent-on' : 'btn-absent-off') + '" onclick="markAbsent(\'' + l.student + '\',\'' + l.date + '\')">' + (absent ? '✕ 取消' : '欠席') + '</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="closePopup();openEditLessonModal(' + lessonIdx + ')" title="編集"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + lessonIdx + ')" title="削除"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>' +
@@ -4685,8 +4772,8 @@ function shiftEndTime(dir) {
 // ========== TIME STEP ==========
 function saveTimeStep() {
   timeStepMinutes = parseInt(document.getElementById('timeStepSelect').value) || 30;
-  const labels   = {1:'1分単位',5:'5分単位',10:'10分単位',15:'15分単位',30:'30分単位',45:'45分単位',60:'60分単位'};
-  const examples = {1:'10:00, 10:01',5:'10:00, 10:05',10:'10:00, 10:10',15:'10:00, 10:15',30:'10:00, 10:30',45:'10:00, 10:45',60:'10:00, 11:00'};
+  const labels   = {1:'1分単位',5:'5分単位',10:'10分単位',15:'15分単位',30:'30分単位',60:'60分単位'};
+  const examples = {1:'10:00, 10:01',5:'10:00, 10:05',10:'10:00, 10:10',15:'10:00, 10:15',30:'10:00, 10:30',60:'10:00, 11:00'};
   document.getElementById('timeStepPreview').textContent = `${labels[timeStepMinutes]}（例: ${examples[timeStepMinutes]}）`;
   const cur = document.getElementById('lessonTime').value || '10:00';
   setPickerTime(cur);
@@ -4906,6 +4993,7 @@ function exportData() {
     spotFee, spotColor, makeupRules, timeStepMinutes,
     calWeekStart, calSatColor, calSunColor, calHolidayColor,
     ageCategories, nextStudentId, nextCourseId, nextAgeCatId, nextGroupId, currentTheme,
+    bookingUrl, bookingNotifyDays,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -4943,6 +5031,8 @@ function importData(event) {
       if (data.nextAgeCatId    != null) nextAgeCatId    = data.nextAgeCatId;
       if (data.groups)          groups          = data.groups;
       if (data.nextGroupId     != null) nextGroupId     = data.nextGroupId;
+      if (data.bookingUrl)      bookingUrl      = data.bookingUrl;
+      if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
       saveData();
       renderCalendar(); renderMakeupTable(); renderStudents();
       renderCourseGrid(); renderGroupSettings(); renderIncome(); renderPendingNotices();
@@ -4974,7 +5064,7 @@ function showView(name) {
   closePopup();
   if (name === 'income') renderIncome();
   if (name === 'settings') {
-    renderSpotColorSwatches(); renderAgeLabelSettings();
+    renderSpotColorSwatches(); renderAgeLabelSettings(); updateBookingSettingsUI();
     // モバイルではメニューホームを表示してパネルを隠す
     if (isMobileSettings()) {
       const menuHome = document.getElementById('settingsMenuHome');
@@ -5063,6 +5153,8 @@ function saveData() {
       groups,
       nextGroupId,
       currentTheme,
+      bookingUrl,
+      bookingNotifyDays,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e) {
@@ -5095,6 +5187,8 @@ function loadData() {
     if (data.groups)         groups         = data.groups;
     if (data.nextGroupId    != null) nextGroupId    = data.nextGroupId;
     if (data.currentTheme)   currentTheme   = data.currentTheme;
+    if (data.bookingUrl)     bookingUrl     = data.bookingUrl;
+    if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
     return true;
   } catch(e) {
     console.warn('データの読み込みに失敗しました:', e);
@@ -5105,6 +5199,83 @@ function loadData() {
 // データ変更時に自動保存を呼ぶラッパー
 function autoSave() {
   saveData();
+}
+
+// ========== 教室予約・通知 ==========
+
+function saveBookingSettings() {
+  const urlVal  = (document.getElementById('bookingUrlInput')?.value || '').trim();
+  const daysVal = parseInt(document.getElementById('bookingNotifySelect')?.value || '1');
+  bookingUrl        = urlVal;
+  bookingNotifyDays = daysVal;
+  saveData();
+  showToast('教室予約設定を保存しました');
+}
+
+function updateBookingSettingsUI() {
+  const urlEl  = document.getElementById('bookingUrlInput');
+  const selEl  = document.getElementById('bookingNotifySelect');
+  const permEl = document.getElementById('notifyPermBtn');
+  if (urlEl)  urlEl.value = bookingUrl || '';
+  if (selEl)  selEl.value = String(bookingNotifyDays);
+  if (permEl) {
+    const perm = ('Notification' in window) ? Notification.permission : 'denied';
+    permEl.textContent = perm === 'granted' ? '🔔 通知許可済み' : '🔔 通知を許可する';
+    permEl.disabled = perm === 'granted';
+  }
+}
+
+function requestNotificationPermission() {
+  if (!('Notification' in window)) { showToast('このブラウザは通知に対応していません'); return; }
+  if (Notification.permission === 'granted') { showToast('通知はすでに許可されています'); return; }
+  Notification.requestPermission().then(result => {
+    if (result === 'granted') {
+      showToast('通知を許可しました');
+      updateBookingSettingsUI();
+    } else {
+      showToast('通知が拒否されました。ブラウザの設定から許可してください');
+    }
+  });
+}
+
+function toggleBookingStatus(lessonIdx) {
+  const l = lessons[lessonIdx];
+  if (!l) return;
+  l.booked = !l.booked;
+  saveData();
+  renderDayPanel(selectedDate);
+  if (document.getElementById('dayPopup').classList.contains('open')) refreshPopupLessons(l.date);
+  showToast(l.booked ? `${l.student} の教室予約を「予約済」にしました` : `${l.student} の予約済を取り消しました`);
+}
+
+function checkBookingNotifications() {
+  if (!bookingUrl) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  lessons.forEach(l => {
+    if (!l.needsBooking || l.booked) return;
+    const lessonDate = new Date(l.date + 'T00:00:00');
+    const diffDays   = Math.floor((lessonDate - now) / 86400000);
+    if (diffDays === bookingNotifyDays) {
+      const name = l.student || '生徒';
+      new Notification(`🏠 教室予約リマインダー`, {
+        body: `${name}さんの教室予約がまだです`,
+        icon: 'icon-192.png',
+      });
+    }
+  });
+}
+
+// 1日1回通知チェック（ページ読み込み時 + 毎時間）
+function scheduleBookingCheck() {
+  checkBookingNotifications();
+  // 次の00分まで待ってから毎時間チェック
+  const now = new Date();
+  const msToNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000;
+  setTimeout(() => {
+    checkBookingNotifications();
+    setInterval(checkBookingNotifications, 3600000);
+  }, msToNextHour);
 }
 
 // ========== INIT ==========
@@ -5132,6 +5303,7 @@ buildGroupSelect();
 renderGroupSettings();
 buildEditCourseSelect();
 buildAgeSelect('editAge', ageCategories[0]?.id || 'adult');
+scheduleBookingCheck();
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
