@@ -677,6 +677,12 @@
   .course-card:hover { border-color: var(--border2); }
   .course-card.dragging { opacity: 0.4; }
   .course-card.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .age-row-handle { display:flex; flex-direction:column; gap:3px; padding:4px 6px; cursor:grab; opacity:0.4; flex-shrink:0; transition:opacity 0.15s; }
+  .age-row-handle:active { cursor:grabbing; }
+  .age-row-handle span { display:block; width:14px; height:2px; background:var(--text2); border-radius:1px; }
+  .rule-row:hover .age-row-handle { opacity:0.75; }
+  .rule-row.dragging { opacity:0.4; }
+  .rule-row.drag-over { outline:2px solid var(--accent); border-radius:8px; background:var(--accent-dim); }
   .drag-handle {
     display: flex; flex-direction: column; gap: 3px;
     padding: 4px 2px; cursor: grab; flex-shrink: 0; opacity: 0.35;
@@ -2300,15 +2306,12 @@ function renderAgeLabelSettings() {
   const grid = document.getElementById('ageLabelGrid');
   if (!grid) return;
   grid.innerHTML = ageCategories.map((cat, i) => `
-    <div class="rule-row" style="align-items:center;gap:8px;flex-wrap:wrap">
-      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" style="padding:1px 5px;font-size:10px;line-height:1" onclick="moveAgeCat('${cat.id}',-1)" ${i===0?'disabled':''}>▲</button>
-        <button class="btn btn-ghost btn-sm" style="padding:1px 5px;font-size:10px;line-height:1" onclick="moveAgeCat('${cat.id}',1)" ${i===ageCategories.length-1?'disabled':''}>▼</button>
-      </div>
-      <div class="age-cat-color-dot" style="background:${cat.color};width:10px;height:10px;border-radius:50%;flex-shrink:0"></div>
+    <div class="rule-row" draggable="true" data-age-id="${cat.id}" style="align-items:center;gap:8px;flex-wrap:nowrap">
+      <div class="age-row-handle" title="ドラッグして並び替え"><span></span><span></span><span></span></div>
+      <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${cat.color}"></div>
       <input type="text" class="form-control" value="${cat.label}"
         id="ageCatLabel_${cat.id}" placeholder="区分名を入力"
-        style="flex:1;min-width:100px;padding:5px 8px;font-size:13px">
+        style="flex:1;min-width:80px;padding:5px 8px;font-size:13px">
       <button class="btn btn-ghost btn-sm" onclick="saveAgeCatLabel('${cat.id}')">保存</button>
       ${ageCategories.length > 1
         ? `<button class="btn btn-danger btn-sm" onclick="deleteAgeCat('${cat.id}')" title="この区分を削除">
@@ -2322,6 +2325,35 @@ function renderAgeLabelSettings() {
         区分を追加
       </button>
     </div>`;
+
+  // PC ドラッグ＆ドロップ
+  let ageDragSrcId = null;
+  grid.querySelectorAll('.rule-row[data-age-id]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      ageDragSrcId = row.dataset.ageId;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      grid.querySelectorAll('.rule-row').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      grid.querySelectorAll('.rule-row').forEach(r => r.classList.remove('drag-over'));
+      if (row.dataset.ageId !== ageDragSrcId) row.classList.add('drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const tgtId = row.dataset.ageId;
+      if (!ageDragSrcId || ageDragSrcId === tgtId) return;
+      reorderAgeCat(ageDragSrcId, tgtId);
+    });
+  });
+
+  // タッチドラッグ（スマホ用）
+  setupAgeTouchDrag(grid);
 }
 
 function saveAgeCatLabel(id) {
@@ -2353,6 +2385,95 @@ function moveAgeCat(id, dir) {
   ageCategories[newIdx] = tmp;
   renderAgeLabelSettings();
   refreshAgeDisplays();
+}
+
+function reorderAgeCat(srcId, tgtId) {
+  const si = ageCategories.findIndex(c => c.id === srcId);
+  const ti = ageCategories.findIndex(c => c.id === tgtId);
+  if (si === -1 || ti === -1 || si === ti) return;
+  const [m] = ageCategories.splice(si, 1);
+  ageCategories.splice(ti, 0, m);
+  saveData();
+  renderAgeLabelSettings();
+  refreshAgeDisplays();
+}
+
+function setupAgeTouchDrag(grid) {
+  if (_ageTouchAbort) _ageTouchAbort.abort();
+  _ageTouchAbort = new AbortController();
+  const sig = _ageTouchAbort.signal;
+
+  let srcId = null, overId = null, ghost = null, active = false, timer = null;
+
+  grid.querySelectorAll('.age-row-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const row = handle.closest('.rule-row[data-age-id]');
+      srcId = row.dataset.ageId;
+      active = false;
+      const touch = e.touches[0];
+
+      timer = setTimeout(() => {
+        active = true;
+        row.classList.add('dragging');
+        const rect = row.getBoundingClientRect();
+        ghost = row.cloneNode(true);
+        ghost._offsetY = touch.clientY - rect.top;
+        ghost.style.cssText = [
+          'position:fixed',
+          `left:${rect.left}px`,
+          `top:${rect.top}px`,
+          `width:${rect.width}px`,
+          'opacity:0.88',
+          'z-index:9999',
+          'pointer-events:none',
+          'transform:scale(1.02)',
+          'box-shadow:0 8px 24px rgba(0,0,0,0.5)',
+          'border-radius:8px',
+          'background:var(--bg3)',
+          'transition:none',
+        ].join(';');
+        document.body.appendChild(ghost);
+      }, 150);
+    }, { passive: true, signal: sig });
+
+    handle.addEventListener('touchcancel', () => { clearTimeout(timer); _cleanupAgeTouch(grid); }, { signal: sig });
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!active) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (ghost) ghost.style.top = (touch.clientY - ghost._offsetY) + 'px';
+
+    ghost.style.visibility = 'hidden';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    ghost.style.visibility = '';
+
+    const targetRow = el?.closest('.rule-row[data-age-id]');
+    grid.querySelectorAll('.rule-row[data-age-id]').forEach(r => r.classList.remove('drag-over'));
+    if (targetRow) {
+      const tid = targetRow.dataset.ageId;
+      if (tid !== srcId) { targetRow.classList.add('drag-over'); overId = tid; }
+      else overId = null;
+    } else {
+      overId = null;
+    }
+  }, { passive: false, signal: sig });
+
+  document.addEventListener('touchend', () => {
+    clearTimeout(timer);
+    const hadActive = active;
+    const from = srcId, to = overId;
+    _cleanupAgeTouch(grid);
+    if (!hadActive) return;
+    if (from && to) reorderAgeCat(from, to);
+  }, { passive: true, signal: sig });
+
+  function _cleanupAgeTouch(g) {
+    active = false; srcId = null; overId = null;
+    if (ghost) { ghost.remove(); ghost = null; }
+    g.querySelectorAll('.rule-row[data-age-id]').forEach(r => r.classList.remove('dragging', 'drag-over'));
+  }
 }
 
 function deleteAgeCat(id) {
@@ -3562,6 +3683,7 @@ const PRESET_COLORS = ['#60a5fa','#4ade80','#f97316','#f472b6','#a78bfa','#34d39
 let editingCourseColor  = '#60a5fa';
 let editingCourseIcon   = '📋';
 let _courseTouchAbort   = null;
+let _ageTouchAbort      = null;
 
 const ICON_GROUPS = [
   { label:'レッスン・職業', icons:['📋','👩‍🏫','👨‍🏫','🎓','📝','✏️','🖊️','📐','📏','🗒️','📖','📚','🔬','🔭','💻','🖥️','💡','🔑','🏆','🎯'] },
