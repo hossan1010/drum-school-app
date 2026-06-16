@@ -1264,6 +1264,14 @@
             </div>
             <div class="settings-menu-item-arrow">›</div>
           </div>
+          <div class="settings-menu-item" onclick="switchSettingsTab('help')">
+            <div class="settings-menu-item-icon" style="background:#f5f3ff;">❓</div>
+            <div style="flex:1">
+              <div class="settings-menu-item-title">使い方・よくある質問</div>
+              <div class="settings-menu-item-desc">機能の説明・操作ガイド・FAQ</div>
+            </div>
+            <div class="settings-menu-item-arrow">›</div>
+          </div>
         </div>
 
         <div class="settings-layout">
@@ -1281,6 +1289,10 @@
             <button class="settings-tab" id="stab-data" onclick="switchSettingsTab('data')" role="tab">
               <span class="settings-tab-icon">💾</span>
               データ管理
+            </button>
+            <button class="settings-tab" id="stab-help" onclick="switchSettingsTab('help')" role="tab">
+              <span class="settings-tab-icon">❓</span>
+              使い方・FAQ
             </button>
           </nav>
 
@@ -1608,6 +1620,123 @@
               </div>
 
             </div><!-- /spanel-data -->
+
+            <!-- ===== 使い方・FAQ ===== -->
+            <div class="settings-panel" id="spanel-help">
+              <div class="settings-panel-back hidden" id="spanel-help-back" onclick="goBackToSettingsMenu()">‹ 設定</div>
+
+              <!-- はじめに -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div>
+                    <div class="settings-section-title">Music Schedulerとは</div>
+                    <div class="settings-section-desc">音楽教室の先生向けに作られた、生徒・レッスン・収入をまとめて管理できるアプリです。スマートフォンのホーム画面に追加するとアプリのように使えます。データはすべてお使いの端末内にのみ保存されます。</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 基本の使い方 -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div><div class="settings-section-title">📅 基本の使い方</div></div>
+                </div>
+                <div class="rule-card" style="display:flex;flex-direction:column;gap:14px">
+                  <div>
+                    <div style="font-weight:600;font-size:13px;margin-bottom:4px">① まず生徒を登録する</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">「生徒一覧」画面右上の「＋ 生徒追加」から生徒情報を登録します。コース（月謝制）または都度払いを選択し、月謝・レッスン料を設定しておくと収入管理が自動で行えます。</div>
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:13px;margin-bottom:4px">② カレンダーからレッスンを追加する</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">「スケジュール」画面のカレンダーで日付をタップし、「＋ 授業を追加」を押します。生徒・開始時間・終了時間・メモを入力して登録します。追加した授業はカレンダーにドットで表示されます。</div>
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:13px;margin-bottom:4px">③ 欠席・振替を記録する</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">授業一覧の「欠席」ボタンをタップして欠席を登録すると、振替の権利が自動で発生します。振替管理画面で振替日を設定でき、期限が近づくとお知らせが表示されます。</div>
+                  </div>
+                  <div>
+                    <div style="font-weight:600;font-size:13px;margin-bottom:4px">④ 収入を確認する</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">「収入管理」画面で月ごとの売上を確認できます。都度払い生徒のレッスンは授業一覧から入金済みにチェックできます。</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- グループレッスン -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div><div class="settings-section-title">👥 グループレッスン</div></div>
+                </div>
+                <div class="rule-card" style="display:flex;flex-direction:column;gap:10px">
+                  <div style="font-size:12px;color:var(--text2);line-height:1.7">複数の生徒を同時にレッスンする場合に使います。「設定 → レッスン管理 → グループレッスン管理」でグループを作成し、メンバーを登録します。授業追加時に「グループ」を選ぶと、メンバー全員分のレッスンを一括で追加できます。</div>
+                  <div style="font-size:12px;color:var(--text3)">※ グループには割引率も設定できます。</div>
+                </div>
+              </div>
+
+              <!-- 教室予約 -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div><div class="settings-section-title">🏠 教室予約機能</div></div>
+                </div>
+                <div class="rule-card" style="display:flex;flex-direction:column;gap:10px">
+                  <div style="font-size:12px;color:var(--text2);line-height:1.7">スタジオや練習室など、生徒の予約とは別に教室を自分で予約する必要がある場合に使います。予約サイトのURLを設定しておくと、レッスンに「要予約」フラグを付けられます。未予約のレッスンがあるとアプリ起動時にお知らせが表示され、バッジから直接予約サイトに移動できます。</div>
+                </div>
+              </div>
+
+              <!-- データの保存について -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div><div class="settings-section-title">💾 データの保存・バックアップ</div></div>
+                </div>
+                <div class="rule-card" style="display:flex;flex-direction:column;gap:10px">
+                  <div style="font-size:12px;color:var(--text2);line-height:1.7">データはこの端末のブラウザ内（localStorage）に自動保存されます。端末を変えたり、アプリを削除すると<strong>データが消えます</strong>。定期的に「設定 → データ管理 → JSONでエクスポート」でバックアップを取ることをおすすめします。別の端末への移行も同じ手順で行えます。</div>
+                </div>
+              </div>
+
+              <!-- FAQ -->
+              <div class="settings-section">
+                <div class="settings-section-header">
+                  <div><div class="settings-section-title">よくある質問</div></div>
+                </div>
+                <div class="rule-card" style="display:flex;flex-direction:column;gap:16px">
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. iPhoneのホーム画面に追加するには？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">SafariでアプリのURLを開き、画面下部の共有ボタン（□↑）をタップして「ホーム画面に追加」を選んでください。アイコンが追加され、アプリのように起動できます。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. レッスンを編集・削除するには？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">授業一覧の各レッスン右側にある鉛筆アイコン（✎）で編集、ゴミ箱アイコンで削除できます。日付や生徒は変更できないため、変更が必要な場合は削除して再登録してください。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. 月謝コースと都度払いの違いは？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">月謝コースは毎月固定の月謝が収入として自動計算されます。都度払いはレッスンごとに料金が発生し、授業一覧から入金済みにチェックすることで収入に反映されます。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. 振替の期限が切れた場合は？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">期限を過ぎた振替権利はお知らせに「権利期限切れ」と表示されます。振替管理画面のキャンセルボタンで処理してください。期限はデフォルトで翌月末ですが「設定 → レッスン管理 → 振替ルール」で変更できます。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. 体験レッスンを追加するには？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">授業追加モーダルで種別を「体験」に切り替え、体験者の名前を入力してください。体験生は生徒一覧に登録されず、カレンダーに体験レッスンとして記録されます。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. スワイプで前の画面に戻るには？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">設定の各項目ページで画面左端から右にスワイプすると、Safariのような滑らかなアニメーションで設定メニューに戻ります。</div>
+                  </div>
+
+                  <div>
+                    <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">Q. データが消えてしまった場合は？</div>
+                    <div style="font-size:12px;color:var(--text2);line-height:1.7">ブラウザのキャッシュ削除やアプリの再インストールでデータが消える場合があります。「設定 → データ管理 → JSONをインポート」から事前にエクスポートしたバックアップを復元できます。定期的なバックアップを強くおすすめします。</div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div><!-- /spanel-help -->
 
           </div><!-- /settings-panels -->
         </div><!-- /settings-layout -->
@@ -4881,7 +5010,7 @@ function isMobileSettings() {
 }
 
 function switchSettingsTab(name) {
-  ['lesson','display','data'].forEach(t => {
+  ['lesson','display','data','help'].forEach(t => {
     document.getElementById('stab-' + t).classList.toggle('active', t === name);
     document.getElementById('spanel-' + t).classList.toggle('active', t === name);
     // モバイル戻るボタン表示制御
@@ -4896,7 +5025,7 @@ function switchSettingsTab(name) {
 
 function goBackToSettingsMenu() {
   // 全パネル非表示
-  ['lesson','display','data'].forEach(t => {
+  ['lesson','display','data','help'].forEach(t => {
     document.getElementById('spanel-' + t).classList.remove('active');
     document.getElementById('stab-' + t).classList.remove('active');
     const backEl = document.getElementById('spanel-' + t + '-back');
@@ -4916,7 +5045,7 @@ function goBackToSettingsMenu() {
   const ANIM_MS = 280;
 
   function getActivePanelName() {
-    return ['lesson','display','data'].find(
+    return ['lesson','display','data','help'].find(
       t => document.getElementById('spanel-' + t)?.classList.contains('active')
     ) || null;
   }
@@ -5143,7 +5272,7 @@ function showView(name) {
     if (isMobileSettings()) {
       const menuHome = document.getElementById('settingsMenuHome');
       if (menuHome) menuHome.classList.remove('hidden');
-      ['lesson','display','data'].forEach(t => {
+      ['lesson','display','data','help'].forEach(t => {
         document.getElementById('spanel-' + t).classList.remove('active');
         const backEl = document.getElementById('spanel-' + t + '-back');
         if (backEl) backEl.classList.add('hidden');
