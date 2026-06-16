@@ -539,7 +539,7 @@
   }
   .settings-tab:hover { background: var(--bg3); color: var(--text1); }
   .settings-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 700; }
-  .settings-tab-icon { font-size: 16px; flex-shrink: 0; }
+  .settings-tab-icon { flex-shrink: 0; display: flex; align-items: center; }
   .settings-panels { flex: 1; min-width: 0; }
   .settings-panel { display: none; }
   .settings-panel.active { display: block; }
@@ -1003,7 +1003,7 @@
 <div class="app">
   <aside class="sidebar">
     <div class="logo">
-      <div class="logo-mark">DRUM SCH.</div>
+      <div class="logo-mark">LESSON SCH.</div>
       <div class="logo-title">管理アプリ</div>
     </div>
     <nav class="nav">
@@ -1241,7 +1241,9 @@
         <div class="settings-menu-home" id="settingsMenuHome">
           <h2 style="font-size:20px;font-weight:700;margin:0 0 16px;">設定</h2>
           <div class="settings-menu-item" onclick="switchSettingsTab('lesson')">
-            <div class="settings-menu-item-icon" style="background:#eff6ff;">🎵</div>
+            <div class="settings-menu-item-icon" style="background:var(--bg3);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+            </div>
             <div style="flex:1">
               <div class="settings-menu-item-title">レッスン管理</div>
               <div class="settings-menu-item-desc">コース・グループ・振替・時間単位</div>
@@ -1249,7 +1251,9 @@
             <div class="settings-menu-item-arrow">›</div>
           </div>
           <div class="settings-menu-item" onclick="switchSettingsTab('display')">
-            <div class="settings-menu-item-icon" style="background:#f0fdf4;">🎨</div>
+            <div class="settings-menu-item-icon" style="background:var(--bg3);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </div>
             <div style="flex:1">
               <div class="settings-menu-item-title">表示設定</div>
               <div class="settings-menu-item-desc">外観・カレンダー・年齢区分</div>
@@ -1257,7 +1261,9 @@
             <div class="settings-menu-item-arrow">›</div>
           </div>
           <div class="settings-menu-item" onclick="switchSettingsTab('data')">
-            <div class="settings-menu-item-icon" style="background:#fef9f0;">💾</div>
+            <div class="settings-menu-item-icon" style="background:var(--bg3);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
             <div style="flex:1">
               <div class="settings-menu-item-title">データ管理</div>
               <div class="settings-menu-item-desc">バックアップ・復元・リセット</div>
@@ -1265,7 +1271,9 @@
             <div class="settings-menu-item-arrow">›</div>
           </div>
           <div class="settings-menu-item" onclick="switchSettingsTab('help')">
-            <div class="settings-menu-item-icon" style="background:#f5f3ff;">❓</div>
+            <div class="settings-menu-item-icon" style="background:var(--bg3);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
             <div style="flex:1">
               <div class="settings-menu-item-title">使い方・よくある質問</div>
               <div class="settings-menu-item-desc">機能の説明・操作ガイド・FAQ</div>
@@ -1279,19 +1287,19 @@
           <!-- タブナビ -->
           <nav class="settings-tabs" role="tablist">
             <button class="settings-tab active" id="stab-lesson" onclick="switchSettingsTab('lesson')" role="tab">
-              <span class="settings-tab-icon">🎵</span>
+              <span class="settings-tab-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg></span>
               レッスン管理
             </button>
             <button class="settings-tab" id="stab-display" onclick="switchSettingsTab('display')" role="tab">
-              <span class="settings-tab-icon">🎨</span>
+              <span class="settings-tab-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
               表示設定
             </button>
             <button class="settings-tab" id="stab-data" onclick="switchSettingsTab('data')" role="tab">
-              <span class="settings-tab-icon">💾</span>
+              <span class="settings-tab-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
               データ管理
             </button>
             <button class="settings-tab" id="stab-help" onclick="switchSettingsTab('help')" role="tab">
-              <span class="settings-tab-icon">❓</span>
+              <span class="settings-tab-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
               使い方・FAQ
             </button>
           </nav>
