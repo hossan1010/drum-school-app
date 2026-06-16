@@ -316,6 +316,72 @@
   .time-option:hover { background: var(--bg3); color: var(--text); }
   .time-option.selected { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
 
+  /* ===== ドラムロールピッカー（モバイル専用） ===== */
+  .drum-picker-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.45);
+    align-items: flex-end;
+  }
+  .drum-picker-overlay.open { display: flex; }
+  .drum-picker-sheet {
+    width: 100%; background: var(--bg2);
+    border-radius: 18px 18px 0 0;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    animation: drumSheetUp 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes drumSheetUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .drum-picker-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px; border-bottom: 1px solid var(--border);
+  }
+  .drum-picker-cancel { font-size: 15px; color: var(--text3); cursor: pointer; padding: 4px 0; }
+  .drum-picker-title  { font-size: 15px; font-weight: 700; }
+  .drum-picker-done   { font-size: 15px; color: var(--accent); font-weight: 700; cursor: pointer; padding: 4px 0; }
+  .drum-picker-body {
+    display: flex; align-items: center; justify-content: center;
+    height: 220px; position: relative; overflow: hidden; gap: 0;
+  }
+  /* 選択中ハイライト帯 */
+  .drum-picker-highlight {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 44px;
+    background: var(--bg3); border-radius: 10px;
+    pointer-events: none; z-index: 1;
+  }
+  /* 上下フェード */
+  .drum-picker-fade {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    background: linear-gradient(
+      to bottom,
+      var(--bg2) 0%, transparent 28%,
+      transparent 72%, var(--bg2) 100%
+    );
+  }
+  .drum-col {
+    width: 88px; height: 220px;
+    overflow-y: scroll; scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; position: relative; z-index: 3;
+  }
+  .drum-col::-webkit-scrollbar { display: none; }
+  .drum-item {
+    height: 44px; scroll-snap-align: center;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 300;
+    font-family: var(--mono); color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .drum-sep {
+    font-size: 30px; font-weight: 200; color: var(--text2);
+    position: relative; z-index: 3; flex-shrink: 0;
+    width: 24px; text-align: center;
+    padding-bottom: 2px; /* 視覚的な中央補正 */
+  }
+
   /* Income month nav */
   .income-month-nav { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
   .income-month-label { font-size:20px; font-weight:700; font-family:var(--mono); }
@@ -1771,6 +1837,24 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('groupModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveGroup()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ドラムロール時間ピッカー（モバイル専用） -->
+<div class="drum-picker-overlay" id="drumPickerOverlay" onclick="onDrumPickerOverlayClick(event)">
+  <div class="drum-picker-sheet">
+    <div class="drum-picker-header">
+      <span class="drum-picker-cancel" onclick="closeDrumPicker()">キャンセル</span>
+      <span class="drum-picker-title" id="drumPickerTitle">開始時間</span>
+      <span class="drum-picker-done" onclick="confirmDrumPicker()">完了</span>
+    </div>
+    <div class="drum-picker-body">
+      <div class="drum-picker-highlight"></div>
+      <div class="drum-col" id="drumColH"></div>
+      <div class="drum-sep">:</div>
+      <div class="drum-col" id="drumColM"></div>
+      <div class="drum-picker-fade"></div>
     </div>
   </div>
 </div>
@@ -4265,7 +4349,79 @@ function setPickerTime(timeStr) {
   if (disp) disp.textContent = snappedStr;
 }
 
+// ===== ドラムロールピッカー =====
+let drumPickerTarget = null; // 'start' | 'end'
+const DRUM_ITEM_H = 44;
+const DRUM_PAD    = DRUM_ITEM_H * 2; // 上下パディング（2コマ分 = 中央に表示）
+
+function buildDrumCol(el, items, selectedVal) {
+  const selStr = String(selectedVal).padStart(2, '0');
+  el.innerHTML =
+    `<div style="height:${DRUM_PAD}px;flex-shrink:0"></div>` +
+    items.map(v => `<div class="drum-item">${v}</div>`).join('') +
+    `<div style="height:${DRUM_PAD}px;flex-shrink:0"></div>`;
+  el._items = items;
+  const idx = items.indexOf(selStr);
+  requestAnimationFrame(() => {
+    el.scrollTop = (idx >= 0 ? idx : 0) * DRUM_ITEM_H;
+  });
+}
+
+function getDrumValue(el) {
+  const idx = Math.min(
+    Math.max(Math.round(el.scrollTop / DRUM_ITEM_H), 0),
+    el._items.length - 1
+  );
+  return el._items[idx];
+}
+
+function openDrumPicker(which) {
+  drumPickerTarget = which;
+  const timeVal = which === 'start'
+    ? document.getElementById('lessonTime').value
+    : document.getElementById('lessonEndTime').value;
+  const [h, m] = timeVal.split(':').map(Number);
+
+  // 時間列: 00〜23
+  const hours = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0'));
+  buildDrumCol(document.getElementById('drumColH'), hours, h);
+
+  // 分列: timeStepMinutes 刻み
+  const minItems = [];
+  for (let i = 0; i < 60; i += timeStepMinutes) minItems.push(String(i).padStart(2, '0'));
+  // 最近傍の刻みにスナップ
+  const nearest = minItems.reduce((a, b) =>
+    Math.abs(parseInt(b) - m) < Math.abs(parseInt(a) - m) ? b : a
+  );
+  buildDrumCol(document.getElementById('drumColM'), minItems, nearest);
+
+  document.getElementById('drumPickerTitle').textContent = which === 'start' ? '開始時間' : '終了時間';
+  document.getElementById('drumPickerOverlay').classList.add('open');
+}
+
+function confirmDrumPicker() {
+  const h = getDrumValue(document.getElementById('drumColH'));
+  const m = getDrumValue(document.getElementById('drumColM'));
+  const timeStr = `${h}:${m}`;
+  if (drumPickerTarget === 'start') {
+    selectTime(timeStr);
+  } else {
+    selectEndTime(timeStr);
+  }
+  closeDrumPicker();
+}
+
+function closeDrumPicker() {
+  document.getElementById('drumPickerOverlay').classList.remove('open');
+  drumPickerTarget = null;
+}
+
+function onDrumPickerOverlayClick(e) {
+  if (e.target === document.getElementById('drumPickerOverlay')) closeDrumPicker();
+}
+
 function openTimePicker() {
+  if (window.innerWidth <= 640) { openDrumPicker('start'); return; }
   const dropdown = document.getElementById('timePickerDropdown');
   if (dropdown.classList.contains('open')) { closeTimePicker(); return; }
   const current = document.getElementById('lessonTime').value;
@@ -4333,6 +4489,7 @@ function shiftTime(dir) {
 
 // ===== 終了時間ピッカー =====
 function openEndTimePicker() {
+  if (window.innerWidth <= 640) { openDrumPicker('end'); return; }
   const dropdown = document.getElementById('endTimePickerDropdown');
   if (dropdown.classList.contains('open')) { closeEndTimePicker(); return; }
   const current = document.getElementById('lessonEndTime').value;
