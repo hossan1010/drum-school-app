@@ -675,10 +675,10 @@
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   /* 授業追加モーダル 日付+時間1行レイアウト */
-  .lesson-datetime-row {
-    display: flex; align-items: flex-end; gap: 10px; margin-bottom: 14px;
-  }
-  .lesson-dt-date { flex: 1.6; margin-bottom: 0; min-width: 0; }
+  /* PC: 日付→時間行の縦2段レイアウト */
+  .lesson-datetime-row { display: flex; flex-direction: column; gap: 0; margin-bottom: 14px; }
+  .lesson-dt-date { margin-bottom: 14px; }
+  .lesson-dt-times { display: flex; align-items: flex-end; gap: 10px; }
   .lesson-dt-time { flex: 1; margin-bottom: 0; min-width: 0; }
   .lesson-dt-arrow {
     color: var(--text3); font-size: 15px; flex-shrink: 0;
@@ -889,10 +889,8 @@
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
     }
     .form-row { grid-template-columns: 1fr; }
-    .lesson-datetime-row { flex-wrap: wrap; }
-    .lesson-dt-date { flex: 1 1 100%; }
+    .lesson-dt-times { gap: 8px; }
     .lesson-dt-time { flex: 1 1 auto; }
-    .lesson-dt-arrow { padding-bottom: 9px; }
     .modal-actions { flex-wrap: wrap; }
 
     /* Makeup table */
@@ -1537,29 +1535,29 @@
         </div>
         <input type="hidden" id="lessonDate">
       </div>
-      <!-- 開始時間 -->
-      <div class="form-group lesson-dt-time">
-        <label class="form-label">開始</label>
-        <input type="hidden" id="lessonTime" value="10:00">
-        <div class="time-picker-wrap">
-          <button class="time-step-btn" onclick="shiftTime(-1)" tabindex="-1">‹</button>
-          <div class="time-display" id="timeDisplay" onclick="openTimePicker()">10:00</div>
-          <button class="time-step-btn" onclick="shiftTime(1)" tabindex="-1">›</button>
+      <!-- 開始・終了時間（横並び） -->
+      <div class="lesson-dt-times">
+        <div class="form-group lesson-dt-time">
+          <label class="form-label">開始</label>
+          <input type="hidden" id="lessonTime" value="10:00">
+          <div class="time-picker-wrap">
+            <button class="time-step-btn" onclick="shiftTime(-1)" tabindex="-1">‹</button>
+            <div class="time-display" id="timeDisplay" onclick="openTimePicker()">10:00</div>
+            <button class="time-step-btn" onclick="shiftTime(1)" tabindex="-1">›</button>
+          </div>
+          <div class="time-picker-dropdown" id="timePickerDropdown"></div>
         </div>
-        <div class="time-picker-dropdown" id="timePickerDropdown"></div>
-      </div>
-      <!-- 区切り矢印 -->
-      <div class="lesson-dt-arrow">→</div>
-      <!-- 終了時間 -->
-      <div class="form-group lesson-dt-time">
-        <label class="form-label">終了</label>
-        <input type="hidden" id="lessonEndTime" value="11:00">
-        <div class="time-picker-wrap">
-          <button class="time-step-btn" onclick="shiftEndTime(-1)" tabindex="-1">‹</button>
-          <div class="time-display" id="endTimeDisplay" onclick="openEndTimePicker()">11:00</div>
-          <button class="time-step-btn" onclick="shiftEndTime(1)" tabindex="-1">›</button>
+        <div class="lesson-dt-arrow">→</div>
+        <div class="form-group lesson-dt-time">
+          <label class="form-label">終了</label>
+          <input type="hidden" id="lessonEndTime" value="11:00">
+          <div class="time-picker-wrap">
+            <button class="time-step-btn" onclick="shiftEndTime(-1)" tabindex="-1">‹</button>
+            <div class="time-display" id="endTimeDisplay" onclick="openEndTimePicker()">11:00</div>
+            <button class="time-step-btn" onclick="shiftEndTime(1)" tabindex="-1">›</button>
+          </div>
+          <div class="time-picker-dropdown" id="endTimePickerDropdown"></div>
         </div>
-        <div class="time-picker-dropdown" id="endTimePickerDropdown"></div>
       </div>
     </div>
     <!-- レッスン種別トグル（個人/グループ/体験） -->
@@ -4463,19 +4461,46 @@ function goBackToSettingsMenu() {
     ) || null;
   }
 
+  // メニューをパネルの背後に絶対配置で重ねる
+  function mountMenuBehind(panelEl, menuEl) {
+    if (!menuEl) return;
+    const rect = panelEl.parentElement.getBoundingClientRect();
+    menuEl.style.position = 'absolute';
+    menuEl.style.top = '0';
+    menuEl.style.left = '0';
+    menuEl.style.width = '100%';
+    menuEl.style.minHeight = rect.height + 'px';
+    menuEl.style.zIndex = '0';
+    menuEl.style.display = 'block';
+    menuEl.style.opacity = '0';
+    menuEl.style.transform = 'translateX(-25%)';
+    panelEl.style.position = 'relative';
+    panelEl.style.zIndex = '1';
+  }
+
+  function unmountMenuBehind(menuEl) {
+    if (!menuEl) return;
+    menuEl.style.position = '';
+    menuEl.style.top = '';
+    menuEl.style.left = '';
+    menuEl.style.width = '';
+    menuEl.style.minHeight = '';
+    menuEl.style.zIndex = '';
+    menuEl.style.display = '';
+    menuEl.style.opacity = '';
+    menuEl.style.transform = '';
+    menuEl.style.transition = '';
+  }
+
   function setStyles(panelEl, menuEl, dx) {
     const w = window.innerWidth;
     const raw = Math.max(0, dx);
     const ratio = raw / w;
-    // パネル: 指に追従（右へスライド）
     panelEl.style.transform = `translateX(${raw}px)`;
-    panelEl.style.boxShadow = `${-8 * (1 - ratio)}px 0 20px rgba(0,0,0,${0.15 * (1 - ratio)})`;
-    // メニュー: パネルの後ろからパララックスで登場（-25% → 0）
+    panelEl.style.boxShadow = `-8px 0 24px rgba(0,0,0,${0.18 * (1 - ratio)})`;
     if (menuEl) {
-      menuEl.style.display = 'block';
       menuEl.style.opacity = Math.min(1, ratio * 2).toString();
-      const menuTx = -25 + ratio * 25;
-      menuEl.style.transform = `translateX(${menuTx}%)`;
+      menuEl.style.transform = `translateX(${-25 + ratio * 25}%)`;
     }
   }
 
@@ -4483,14 +4508,10 @@ function goBackToSettingsMenu() {
     panelEl.style.transform = '';
     panelEl.style.boxShadow = '';
     panelEl.style.transition = '';
-    if (menuEl) {
-      menuEl.style.transform = '';
-      menuEl.style.opacity = '';
-      menuEl.style.transition = '';
-      // パネルが表示中はメニューは非表示に戻す
-      if (!menuEl.classList.contains('hidden')) menuEl.classList.add('hidden');
-      menuEl.style.display = '';
-    }
+    panelEl.style.position = '';
+    panelEl.style.zIndex = '';
+    unmountMenuBehind(menuEl);
+    if (menuEl && !menuEl.classList.contains('hidden')) menuEl.classList.add('hidden');
   }
 
   function animateTo(panelEl, menuEl, complete) {
@@ -4502,12 +4523,14 @@ function goBackToSettingsMenu() {
       panelEl.style.transform = `translateX(${w}px)`;
       if (menuEl) { menuEl.style.transform = 'translateX(0%)'; menuEl.style.opacity = '1'; }
       setTimeout(() => {
+        // goBackToSettingsMenu でメニューを正規表示に戻す前にスタイルをクリア
         panelEl.style.transition = '';
-        goBackToSettingsMenu();
-        // goBackToSettingsMenu が display を制御するので styles だけリセット
         panelEl.style.transform = '';
         panelEl.style.boxShadow = '';
-        if (menuEl) { menuEl.style.transform = ''; menuEl.style.opacity = ''; menuEl.style.transition = ''; menuEl.style.display = ''; }
+        panelEl.style.position = '';
+        panelEl.style.zIndex = '';
+        unmountMenuBehind(menuEl);
+        goBackToSettingsMenu();
       }, ANIM_MS);
     } else {
       panelEl.style.transform = 'translateX(0)';
@@ -4534,7 +4557,13 @@ function goBackToSettingsMenu() {
     // 縦スクロールと判定したら以後無視
     if (!dragging && !verticalLock) {
       if (Math.abs(dy) > Math.abs(dx) + 5) { verticalLock = true; return; }
-      if (dx > 8) dragging = true;
+      if (dx > 8) {
+        dragging = true;
+        // ドラッグ開始時にメニューをパネルの背後に絶対配置でマウント
+        const panelEl = document.getElementById('spanel-' + activePanelName);
+        const menuEl  = document.getElementById('settingsMenuHome');
+        mountMenuBehind(panelEl, menuEl);
+      }
     }
     if (!dragging || verticalLock) return;
 
