@@ -3559,8 +3559,9 @@ function jumpToMonth(y, m) {
 // ========== SETTINGS ==========
 const PRESET_COLORS = ['#60a5fa','#4ade80','#f97316','#f472b6','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#c084fc','#fb923c','#86efac'];
 
-let editingCourseColor = '#60a5fa';
-let editingCourseIcon  = '📋';
+let editingCourseColor  = '#60a5fa';
+let editingCourseIcon   = '📋';
+let _courseTouchAbort   = null;
 
 const ICON_GROUPS = [
   { label:'レッスン・職業', icons:['📋','👩‍🏫','👨‍🏫','🎓','📝','✏️','🖊️','📐','📏','🗒️','📖','📚','🔬','🔭','💻','🖥️','💡','🔑','🏆','🎯'] },
@@ -3877,6 +3878,97 @@ function renderCourseGrid() {
       saveData();
     });
   });
+
+  // タッチドラッグ（スマホ用）
+  setupCourseTouchDrag(grid);
+}
+
+function setupCourseTouchDrag(grid) {
+  if (_courseTouchAbort) _courseTouchAbort.abort();
+  _courseTouchAbort = new AbortController();
+  const sig = _courseTouchAbort.signal;
+
+  let srcId = null, overId = null, ghost = null, active = false, timer = null;
+
+  grid.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const card = handle.closest('.course-card');
+      srcId = parseInt(card.dataset.id);
+      active = false;
+      const touch = e.touches[0];
+      const startX = touch.clientX, startY = touch.clientY;
+
+      timer = setTimeout(() => {
+        active = true;
+        card.classList.add('dragging');
+        const rect = card.getBoundingClientRect();
+        ghost = card.cloneNode(true);
+        ghost._offsetY = touch.clientY - rect.top;
+        ghost.style.cssText = [
+          'position:fixed',
+          `left:${rect.left}px`,
+          `top:${rect.top}px`,
+          `width:${rect.width}px`,
+          'opacity:0.88',
+          'z-index:9999',
+          'pointer-events:none',
+          'transform:scale(1.03) rotate(1deg)',
+          'box-shadow:0 10px 28px rgba(0,0,0,0.55)',
+          'border-radius:12px',
+          'transition:none',
+        ].join(';');
+        document.body.appendChild(ghost);
+      }, 150);
+    }, { passive: true, signal: sig });
+
+    handle.addEventListener('touchcancel', () => { clearTimeout(timer); _cleanupCourseTouch(grid); }, { signal: sig });
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!active) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (ghost) ghost.style.top = (touch.clientY - ghost._offsetY) + 'px';
+
+    // ゴーストを一時的に隠して下の要素を検出
+    ghost.style.visibility = 'hidden';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    ghost.style.visibility = '';
+
+    const targetCard = el?.closest('.course-card');
+    grid.querySelectorAll('.course-card').forEach(c => c.classList.remove('drag-over'));
+    if (targetCard) {
+      const tid = parseInt(targetCard.dataset.id);
+      if (tid !== srcId) { targetCard.classList.add('drag-over'); overId = tid; }
+      else overId = null;
+    } else {
+      overId = null;
+    }
+  }, { passive: false, signal: sig });
+
+  document.addEventListener('touchend', () => {
+    clearTimeout(timer);
+    const hadActive = active;
+    const from = srcId, to = overId;
+    _cleanupCourseTouch(grid);
+    if (!hadActive) return;
+    if (from !== null && to !== null) {
+      const si = courses.findIndex(c => c.id === from);
+      const ti = courses.findIndex(c => c.id === to);
+      if (si !== -1 && ti !== -1) {
+        const [m] = courses.splice(si, 1);
+        courses.splice(ti, 0, m);
+        saveData();
+        renderCourseGrid();
+      }
+    }
+  }, { passive: true, signal: sig });
+
+  function _cleanupCourseTouch(g) {
+    active = false; srcId = null; overId = null;
+    if (ghost) { ghost.remove(); ghost = null; }
+    g.querySelectorAll('.course-card').forEach(c => c.classList.remove('dragging', 'drag-over'));
+  }
 }
 
 function renderColorSwatches(selectedColor) {
