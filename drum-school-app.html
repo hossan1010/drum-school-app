@@ -435,6 +435,48 @@
   .monthly-row-link:hover .row-jump-hint { color: var(--accent); }
   .row-jump-hint { font-size: 11px; color: var(--text3); margin-left: 6px; transition: color 0.12s; }
 
+  /* Course icon picker */
+  .icon-select-btn {
+    display:flex; align-items:center; gap:8px; padding:6px 12px;
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    cursor:pointer; font-size:13px; color:var(--text1); transition:border-color 0.15s;
+  }
+  .icon-select-btn:hover { border-color:var(--accent); }
+  .icon-select-btn .icon-preview-em { font-size:22px; line-height:1; }
+  .icon-picker-panel {
+    position:absolute; z-index:200;
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    width:min(340px, 90vw); max-height:340px;
+    display:flex; flex-direction:column; overflow:hidden;
+    margin-top:4px;
+  }
+  .icon-picker-tabs {
+    display:flex; overflow-x:auto; padding:8px 8px 0;
+    gap:4px; flex-shrink:0; scrollbar-width:none;
+  }
+  .icon-picker-tabs::-webkit-scrollbar { display:none; }
+  .icon-tab-btn {
+    white-space:nowrap; padding:4px 10px; font-size:11px;
+    background:transparent; border:1px solid transparent;
+    border-radius:20px; cursor:pointer; color:var(--text2);
+    transition:all 0.15s; flex-shrink:0;
+  }
+  .icon-tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .icon-tab-btn:hover:not(.active) { background:var(--bg3); border-color:var(--border); }
+  .icon-picker-grid {
+    display:grid; grid-template-columns:repeat(8,1fr);
+    gap:2px; padding:8px; overflow-y:auto; flex:1;
+  }
+  .icon-picker-grid button {
+    aspect-ratio:1; font-size:20px; background:transparent; border:none;
+    border-radius:6px; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; transition:background 0.1s;
+  }
+  .icon-picker-grid button:hover { background:var(--bg3); }
+  .icon-picker-grid button.selected { background:var(--accent-dim); outline:2px solid var(--accent); }
+  .icon-picker-wrap { position:relative; }
+
   /* Course color picker */
   .color-picker-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
   .color-swatches { display:flex; gap:6px; flex-wrap:wrap; }
@@ -2004,6 +2046,20 @@
       </div>
     </div>
     <div class="form-group">
+      <label class="form-label">アイコン</label>
+      <div class="icon-picker-wrap">
+        <button class="icon-select-btn" type="button" id="iconSelectBtn" onclick="toggleIconPicker(event)">
+          <span class="icon-preview-em" id="courseIconPreview">📋</span>
+          <span id="courseIconLabel">アイコンを選ぶ</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="icon-picker-panel" id="iconPickerPanel" style="display:none">
+          <div class="icon-picker-tabs" id="iconPickerTabs"></div>
+          <div class="icon-picker-grid" id="iconPickerGrid"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
       <label class="form-label">カレンダー表示色</label>
       <div class="color-picker-row">
         <div class="color-swatches" id="colorSwatches"></div>
@@ -3485,6 +3541,73 @@ function jumpToMonth(y, m) {
 const PRESET_COLORS = ['#60a5fa','#4ade80','#f97316','#f472b6','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#c084fc','#fb923c','#86efac'];
 
 let editingCourseColor = '#60a5fa';
+let editingCourseIcon  = '📋';
+
+const ICON_GROUPS = [
+  { label:'レッスン・職業', icons:['📋','👩‍🏫','👨‍🏫','🎓','📝','✏️','🖊️','📐','📏','🗒️','📖','📚','🔬','🔭','💻','🖥️','💡','🔑','🏆','🎯'] },
+  { label:'スポーツ・体', icons:['⚽','🏀','🎾','🏸','🏈','⚾','🏒','🎱','🏓','🥊','🥋','🏄','🚴','🏋️','🤸','🏊','🎿','🏹','🤺','🧗'] },
+  { label:'ダンス・舞台', icons:['💃','🕺','🎭','🎬','🎥','🎪','🩰','🎤','🎧','🎼'] },
+  { label:'音楽', icons:['🎸','🎹','🎺','🎻','🥁','🎷','🪗','🪘','🎵','🎶'] },
+  { label:'アート・クリエイティブ', icons:['🎨','🖌️','✂️','🧵','🪡','🧶','📸','🖼️','🏺','🪆'] },
+  { label:'ウェルネス・美', icons:['🧘','💆','💅','🌿','🌸','🧖','💊','🩺','🌞','🧴'] },
+  { label:'料理・食', icons:['🍳','🧑‍🍳','🥗','🎂','☕','🍵','🍷','🥐','🍜','🥩'] },
+  { label:'数字', icons:['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'] },
+  { label:'記号・その他', icons:['⭐','🌟','💫','✨','🔥','💎','🏅','🎖️','🥇','🎗️','🔷','🔶','🔴','🟡','🟢','🔵','🟣','⚡','♾️','🔮'] },
+];
+
+let _iconPickerActiveGroup = 0;
+
+function renderIconPicker() {
+  const tabsEl = document.getElementById('iconPickerTabs');
+  const gridEl = document.getElementById('iconPickerGrid');
+  if (!tabsEl || !gridEl) return;
+  tabsEl.innerHTML = ICON_GROUPS.map((g, i) =>
+    `<button class="icon-tab-btn${i===_iconPickerActiveGroup?' active':''}" onclick="switchIconGroup(${i})">${g.label}</button>`
+  ).join('');
+  const icons = ICON_GROUPS[_iconPickerActiveGroup].icons;
+  gridEl.innerHTML = icons.map(em =>
+    `<button type="button" class="${em===editingCourseIcon?'selected':''}" onclick="selectCourseIcon('${em}')" title="${em}">${em}</button>`
+  ).join('');
+}
+
+function switchIconGroup(idx) {
+  _iconPickerActiveGroup = idx;
+  renderIconPicker();
+}
+
+function toggleIconPicker(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('iconPickerPanel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'flex';
+    renderIconPicker();
+    // 外クリックで閉じる
+    setTimeout(() => document.addEventListener('click', _closeIconPickerOutside, { once: true }), 0);
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function _closeIconPickerOutside(e) {
+  const wrap = document.getElementById('iconPickerPanel');
+  if (wrap && !wrap.contains(e.target)) {
+    wrap.style.display = 'none';
+  }
+}
+
+function selectCourseIcon(em) {
+  editingCourseIcon = em;
+  document.getElementById('courseIconPreview').textContent = em;
+  document.getElementById('courseIconLabel').textContent = em;
+  document.getElementById('iconPickerPanel').style.display = 'none';
+  renderIconPicker();
+}
+
+function setIconPreviewUI(em) {
+  editingCourseIcon = em;
+  document.getElementById('courseIconPreview').textContent = em;
+  document.getElementById('courseIconLabel').textContent = em;
+}
 
 // ========== GROUP LESSONS ==========
 const GROUP_COLORS = ['#60a5fa','#4ade80','#fb923c','#f472b6','#a78bfa','#34d399','#facc15','#f87171'];
@@ -3670,7 +3793,7 @@ function renderCourseGrid() {
     return `<div class="course-card" draggable="true" data-id="${c.id}">
       <div class="drag-handle" title="ドラッグして並び替え"><span></span><span></span><span></span></div>
       <div class="course-color-strip" style="background:${color}"></div>
-      <div class="course-card-icon" style="background:${bg}">🥁</div>
+      <div class="course-card-icon" style="background:${bg}">${c.icon || '📋'}</div>
       <div class="course-card-info">
         <div class="course-card-name">${c.name}</div>
         <div class="course-card-meta">月${c.timesPerMonth}回レッスン</div>
@@ -3748,6 +3871,8 @@ function openAddCourseModal() {
   document.getElementById('courseTimesInput').value = '';
   editingCourseColor = '#60a5fa';
   renderColorSwatches(editingCourseColor);
+  setIconPreviewUI('📋');
+  _iconPickerActiveGroup = 0;
   document.getElementById('courseModal').classList.add('open');
 }
 function openEditCourseModal(id) {
@@ -3760,6 +3885,8 @@ function openEditCourseModal(id) {
   document.getElementById('courseTimesInput').value = c.timesPerMonth;
   editingCourseColor = c.color || '#60a5fa';
   renderColorSwatches(editingCourseColor);
+  setIconPreviewUI(c.icon || '📋');
+  _iconPickerActiveGroup = 0;
   document.getElementById('courseModal').classList.add('open');
 }
 function saveCourse() {
@@ -3769,11 +3896,12 @@ function saveCourse() {
   const color = editingCourseColor;
   if (!name) { showToast('コース名を入力してください'); return; }
   const editId = document.getElementById('courseEditId').value;
+  const icon = editingCourseIcon || '📋';
   if (editId) {
     const c = courses.find(c => c.id === parseInt(editId));
-    if (c) { c.name = name; c.fee = fee; c.timesPerMonth = times; c.color = color; showToast(`「${name}」を更新しました`); }
+    if (c) { c.name = name; c.fee = fee; c.timesPerMonth = times; c.color = color; c.icon = icon; showToast(`「${name}」を更新しました`); }
   } else {
-    courses.push({ id: nextCourseId++, name, fee, timesPerMonth: times, color });
+    courses.push({ id: nextCourseId++, name, fee, timesPerMonth: times, color, icon });
     showToast(`「${name}」を追加しました`);
   }
   closeModal('courseModal');
