@@ -1417,12 +1417,18 @@
                   </div>
                   <div class="rule-row">
                     <span class="rule-label">通知タイミング</span>
+                    <div class="rule-edit-row" style="gap:6px;align-items:center">
+                      <input type="number" id="bookingNotifyDaysInput" min="0" max="30" value="1" style="width:60px">
+                      <span style="font-size:13px;color:var(--text2)">日前</span>
+                      <span style="font-size:11px;color:var(--text3)">（0=当日）</span>
+                    </div>
+                  </div>
+                  <div class="rule-row">
+                    <span class="rule-label">未予約バッジのタップ動作</span>
                     <div class="rule-edit-row">
-                      <select id="bookingNotifySelect">
-                        <option value="0">当日</option>
-                        <option value="1">前日</option>
-                        <option value="2">2日前</option>
-                        <option value="3">3日前</option>
+                      <select id="bookingTapModeSelect">
+                        <option value="single">シングルタップで予約サイトへ</option>
+                        <option value="confirm">確認ダイアログを表示</option>
                       </select>
                     </div>
                   </div>
@@ -2011,8 +2017,9 @@ let spotColor = '#a78bfa'; // 都度払いのカレンダー表示色
 let makeupRules = { maxCount: 1, deadline: 'next_month' };
 let timeStepMinutes = 30; // 授業時間の入力単位（分）
 let calWeekStart = 0;      // 0=日曜始まり, 1=月曜始まり
-let bookingUrl       = ''; // 教室予約サイトURL
-let bookingNotifyDays = 1; // 何日前に通知 (0=当日,1=前日,2=2日前,3=3日前)
+let bookingUrl        = ''; // 教室予約サイトURL
+let bookingNotifyDays = 1;  // 何日前に通知
+let bookingTapMode    = 'single'; // 'single'=シングルタップ, 'confirm'=確認あり
 let calSatColor  = false;  // 土曜を青系で表示
 let calSunColor  = false;  // 日曜を赤系で表示
 let calHolidayColor = false; // 祝日を赤系で表示
@@ -2408,8 +2415,9 @@ function renderDayPanel(ds) {
         : '';
       const bookingBadge = (l.needsBooking && bookingUrl)
         ? (l.booked
-          ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで取消）">🏠 予約済</span>'
-          : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="未予約（タップで予約済にする）">🏠 未予約</span>')
+          ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで未予約に戻す）">🏠 予約済</span>'
+          : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="openBookingSite(' + lessonIdx + ')" title="タップして予約サイトへ">🏠 未予約 →</span>' +
+            '<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0;border:1px solid var(--green)" onclick="markBooked(' + lessonIdx + ')" title="予約済にする">✓</span>')
         : '';
       return '<div class="lesson-row" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);' : '') + '">' +
         '<span class="lesson-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
@@ -4501,8 +4509,9 @@ function refreshPopupLessons(date) {
       : '';
     const bookingBadge = (l.needsBooking && bookingUrl)
       ? (l.booked
-        ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで取消）">🏠 予約済</span>'
-        : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="未予約（タップで予約済にする）">🏠 未予約</span>')
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0" onclick="toggleBookingStatus(' + lessonIdx + ')" title="予約済（タップで未予約に戻す）">🏠 予約済</span>'
+        : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--amber-dim);color:var(--amber);font-weight:600;cursor:pointer;flex-shrink:0" onclick="openBookingSite(' + lessonIdx + ')" title="タップして予約サイトへ">🏠 未予約 →</span>' +
+          '<span style="font-size:10px;padding:2px 6px;border-radius:99px;background:var(--green-dim);color:var(--green);font-weight:600;cursor:pointer;flex-shrink:0;border:1px solid var(--green)" onclick="markBooked(' + lessonIdx + ')" title="予約済にする">✓</span>')
       : '';
     return '<div class="day-popup-lesson" style="' + (absent ? 'border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.05)' : '') + '">' +
       '<span class="day-popup-time">' + l.time + (l.endTime ? '<br><span style="font-size:10px;color:var(--text3)">'+l.endTime+'</span>' : '') + '</span>' +
@@ -4993,7 +5002,7 @@ function exportData() {
     spotFee, spotColor, makeupRules, timeStepMinutes,
     calWeekStart, calSatColor, calSunColor, calHolidayColor,
     ageCategories, nextStudentId, nextCourseId, nextAgeCatId, nextGroupId, currentTheme,
-    bookingUrl, bookingNotifyDays,
+    bookingUrl, bookingNotifyDays, bookingTapMode,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -5031,8 +5040,9 @@ function importData(event) {
       if (data.nextAgeCatId    != null) nextAgeCatId    = data.nextAgeCatId;
       if (data.groups)          groups          = data.groups;
       if (data.nextGroupId     != null) nextGroupId     = data.nextGroupId;
-      if (data.bookingUrl)      bookingUrl      = data.bookingUrl;
+      if (data.bookingUrl)       bookingUrl       = data.bookingUrl;
       if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
+      if (data.bookingTapMode)   bookingTapMode   = data.bookingTapMode;
       saveData();
       renderCalendar(); renderMakeupTable(); renderStudents();
       renderCourseGrid(); renderGroupSettings(); renderIncome(); renderPendingNotices();
@@ -5155,6 +5165,7 @@ function saveData() {
       currentTheme,
       bookingUrl,
       bookingNotifyDays,
+      bookingTapMode,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e) {
@@ -5187,8 +5198,9 @@ function loadData() {
     if (data.groups)         groups         = data.groups;
     if (data.nextGroupId    != null) nextGroupId    = data.nextGroupId;
     if (data.currentTheme)   currentTheme   = data.currentTheme;
-    if (data.bookingUrl)     bookingUrl     = data.bookingUrl;
+    if (data.bookingUrl)       bookingUrl       = data.bookingUrl;
     if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
+    if (data.bookingTapMode)   bookingTapMode   = data.bookingTapMode;
     return true;
   } catch(e) {
     console.warn('データの読み込みに失敗しました:', e);
@@ -5204,20 +5216,24 @@ function autoSave() {
 // ========== 教室予約・通知 ==========
 
 function saveBookingSettings() {
-  const urlVal  = (document.getElementById('bookingUrlInput')?.value || '').trim();
-  const daysVal = parseInt(document.getElementById('bookingNotifySelect')?.value || '1');
+  const urlVal     = (document.getElementById('bookingUrlInput')?.value || '').trim();
+  const daysVal    = parseInt(document.getElementById('bookingNotifyDaysInput')?.value || '1');
+  const tapModeVal = document.getElementById('bookingTapModeSelect')?.value || 'single';
   bookingUrl        = urlVal;
-  bookingNotifyDays = daysVal;
+  bookingNotifyDays = isNaN(daysVal) ? 1 : Math.max(0, daysVal);
+  bookingTapMode    = tapModeVal;
   saveData();
   showToast('教室予約設定を保存しました');
 }
 
 function updateBookingSettingsUI() {
-  const urlEl  = document.getElementById('bookingUrlInput');
-  const selEl  = document.getElementById('bookingNotifySelect');
-  const permEl = document.getElementById('notifyPermBtn');
-  if (urlEl)  urlEl.value = bookingUrl || '';
-  if (selEl)  selEl.value = String(bookingNotifyDays);
+  const urlEl     = document.getElementById('bookingUrlInput');
+  const daysEl    = document.getElementById('bookingNotifyDaysInput');
+  const tapSelEl  = document.getElementById('bookingTapModeSelect');
+  const permEl    = document.getElementById('notifyPermBtn');
+  if (urlEl)    urlEl.value    = bookingUrl || '';
+  if (daysEl)   daysEl.value   = String(bookingNotifyDays);
+  if (tapSelEl) tapSelEl.value = bookingTapMode || 'single';
   if (permEl) {
     const perm = ('Notification' in window) ? Notification.permission : 'denied';
     permEl.textContent = perm === 'granted' ? '🔔 通知許可済み' : '🔔 通知を許可する';
@@ -5236,6 +5252,26 @@ function requestNotificationPermission() {
       showToast('通知が拒否されました。ブラウザの設定から許可してください');
     }
   });
+}
+
+function openBookingSite(lessonIdx) {
+  if (!bookingUrl) return;
+  const l = lessons[lessonIdx];
+  if (!l) return;
+  if (bookingTapMode === 'confirm') {
+    if (!confirm(`${l.student} さんの教室予約サイトを開きますか？`)) return;
+  }
+  window.open(bookingUrl, '_blank', 'noopener');
+}
+
+function markBooked(lessonIdx) {
+  const l = lessons[lessonIdx];
+  if (!l) return;
+  l.booked = true;
+  saveData();
+  renderDayPanel(selectedDate);
+  if (document.getElementById('dayPopup').classList.contains('open')) refreshPopupLessons(l.date);
+  showToast(`${l.student} の教室予約を「予約済」にしました`);
 }
 
 function toggleBookingStatus(lessonIdx) {
