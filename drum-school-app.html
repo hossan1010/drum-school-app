@@ -1056,6 +1056,10 @@
               <span class="notice-count" id="noticeCount">0</span>
             </button>
             <div class="notice-dropdown" id="noticeDropdown">
+              <div id="noticeBookingSection" style="display:none">
+                <div class="notice-dropdown-title" style="color:var(--amber)">🏠 教室予約が必要</div>
+                <div id="noticeBookingList"></div>
+              </div>
               <div id="noticeUnpaidSection" style="display:none">
                 <div class="notice-dropdown-title" style="color:var(--red)">都度払い未収</div>
                 <div id="noticeUnpaidList"></div>
@@ -1068,6 +1072,16 @@
           </div>
         </div>
         <div class="cal-grid" id="calGrid"></div>
+        <!-- 教室予約リマインダーバナー -->
+        <div id="bookingReminderBanner" style="display:none;margin-bottom:12px;background:var(--amber-dim);border:1px solid var(--amber);border-radius:var(--radius);padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:var(--amber)">
+              🏠 <span>教室予約リマインダー</span>
+            </div>
+            <button onclick="dismissBookingBanner()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);line-height:1;padding:0 2px">×</button>
+          </div>
+          <div id="bookingReminderList" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
         <div id="scheduleSpotPaymentWrap" style="display:none;margin-bottom:16px">
           <div class="day-panel-title" style="margin-bottom:10px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -1431,6 +1445,13 @@
                         <option value="confirm">確認ダイアログを表示</option>
                       </select>
                     </div>
+                  </div>
+                  <div class="rule-row">
+                    <span class="rule-label">予定追加時に「要予約」をデフォルトでオン</span>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                      <input type="checkbox" id="bookingDefaultCheckedToggle" style="width:16px;height:16px;accent-color:var(--accent)">
+                      <span style="font-size:12px;color:var(--text2)">デフォルトでチェック</span>
+                    </label>
                   </div>
                   <div class="rule-row" style="gap:8px;flex-wrap:wrap">
                     <button class="btn btn-ghost btn-sm" onclick="requestNotificationPermission()" id="notifyPermBtn">🔔 通知を許可する</button>
@@ -2019,7 +2040,8 @@ let timeStepMinutes = 30; // 授業時間の入力単位（分）
 let calWeekStart = 0;      // 0=日曜始まり, 1=月曜始まり
 let bookingUrl        = ''; // 教室予約サイトURL
 let bookingNotifyDays = 1;  // 何日前に通知
-let bookingTapMode    = 'single'; // 'single'=シングルタップ, 'confirm'=確認あり
+let bookingTapMode        = 'single'; // 'single'=シングルタップ, 'confirm'=確認あり
+let bookingDefaultChecked = false;    // 予定追加時に「要予約」をデフォルトでチェックするか
 let calSatColor  = false;  // 土曜を青系で表示
 let calSunColor  = false;  // 日曜を赤系で表示
 let calHolidayColor = false; // 祝日を赤系で表示
@@ -3885,7 +3907,7 @@ function openLessonModal(ds) {
   const nbChk = document.getElementById('needsBookingCheck');
   if (bookingUrl) {
     nbGrp.style.display = '';
-    nbChk.checked = false;
+    nbChk.checked = !!bookingDefaultChecked;
   } else {
     nbGrp.style.display = 'none';
     nbChk.checked = false;
@@ -4334,8 +4356,11 @@ function renderPendingNotices() {
   const listEl = document.getElementById('noticeDropdownList');
   if (!btn) return;
 
-  // 未収レッスン（過去日・都度払い・未入金）
+  // 教室予約リマインダー（bookingNotifyDays日以内の未予約レッスン）
   const today = new Date(); today.setHours(0,0,0,0);
+  renderBookingReminders(today);
+
+  // 未収レッスン（過去日・都度払い・未入金）
   const spotNames = new Set(students.filter(s => s.plan === 'spot' && !s.suspended).map(s => s.name));
   const unpaidLessons = lessons.filter(l => {
     const d = new Date(l.date + 'T00:00:00');
@@ -4347,11 +4372,36 @@ function renderPendingNotices() {
     .sort((a,b) => a.date.localeCompare(b.date));
   renderScheduleSpotPaymentList(allUnpaidLessons);
 
-  // お知らせバッジ（未収 + 振替）
-  const totalCount = pending.length + unpaidLessons.length;
+  // お知らせバッジ（教室予約未完了 + 未収 + 振替）
+  const bookingReminders = getBookingReminders(today);
+  const totalCount = pending.length + unpaidLessons.length + bookingReminders.length;
   const unpaidSection = document.getElementById('noticeUnpaidSection');
   const unpaidListEl = document.getElementById('noticeUnpaidList');
   const spotStudentMap = new Map(students.filter(s => s.plan === 'spot').map(s => [s.name, s.fee]));
+
+  // 教室予約セクション（通知ベル）
+  const bookingSection = document.getElementById('noticeBookingSection');
+  const bookingListEl  = document.getElementById('noticeBookingList');
+  if (bookingSection && bookingListEl) {
+    if (bookingReminders.length) {
+      bookingSection.style.display = 'block';
+      bookingListEl.innerHTML = bookingReminders.map(({ l, lessonIdx, daysLeft }) => {
+        const d = new Date(l.date + 'T00:00:00');
+        const dateLabel = `${d.getMonth()+1}月${d.getDate()}日`;
+        const dayLabel  = daysLeft === 0 ? '今日' : daysLeft === 1 ? '明日' : `${daysLeft}日後`;
+        return `<div class="notice-item" onclick="jumpToBookingDate('${l.date}')">
+          <div class="notice-item-dot" style="background:var(--amber)"></div>
+          <div class="notice-item-text">
+            <div class="notice-item-name">${l.student}</div>
+            <div class="notice-item-sub">${dateLabel}（${dayLabel}）· タップで確認</div>
+          </div>
+          <span class="notice-item-arrow">›</span>
+        </div>`;
+      }).join('');
+    } else {
+      bookingSection.style.display = 'none';
+    }
+  }
 
   if (unpaidLessons.length && unpaidSection && unpaidListEl) {
     unpaidSection.style.display = 'block';
@@ -5002,7 +5052,7 @@ function exportData() {
     spotFee, spotColor, makeupRules, timeStepMinutes,
     calWeekStart, calSatColor, calSunColor, calHolidayColor,
     ageCategories, nextStudentId, nextCourseId, nextAgeCatId, nextGroupId, currentTheme,
-    bookingUrl, bookingNotifyDays, bookingTapMode,
+    bookingUrl, bookingNotifyDays, bookingTapMode, bookingDefaultChecked,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -5040,9 +5090,10 @@ function importData(event) {
       if (data.nextAgeCatId    != null) nextAgeCatId    = data.nextAgeCatId;
       if (data.groups)          groups          = data.groups;
       if (data.nextGroupId     != null) nextGroupId     = data.nextGroupId;
-      if (data.bookingUrl)       bookingUrl       = data.bookingUrl;
+      if (data.bookingUrl)            bookingUrl            = data.bookingUrl;
       if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
-      if (data.bookingTapMode)   bookingTapMode   = data.bookingTapMode;
+      if (data.bookingTapMode)        bookingTapMode        = data.bookingTapMode;
+      if (data.bookingDefaultChecked != null) bookingDefaultChecked = data.bookingDefaultChecked;
       saveData();
       renderCalendar(); renderMakeupTable(); renderStudents();
       renderCourseGrid(); renderGroupSettings(); renderIncome(); renderPendingNotices();
@@ -5166,6 +5217,7 @@ function saveData() {
       bookingUrl,
       bookingNotifyDays,
       bookingTapMode,
+      bookingDefaultChecked,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e) {
@@ -5198,9 +5250,10 @@ function loadData() {
     if (data.groups)         groups         = data.groups;
     if (data.nextGroupId    != null) nextGroupId    = data.nextGroupId;
     if (data.currentTheme)   currentTheme   = data.currentTheme;
-    if (data.bookingUrl)       bookingUrl       = data.bookingUrl;
+    if (data.bookingUrl)            bookingUrl            = data.bookingUrl;
     if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
-    if (data.bookingTapMode)   bookingTapMode   = data.bookingTapMode;
+    if (data.bookingTapMode)        bookingTapMode        = data.bookingTapMode;
+    if (data.bookingDefaultChecked != null) bookingDefaultChecked = data.bookingDefaultChecked;
     return true;
   } catch(e) {
     console.warn('データの読み込みに失敗しました:', e);
@@ -5215,25 +5268,93 @@ function autoSave() {
 
 // ========== 教室予約・通知 ==========
 
+// 通知対象レッスンを返す（今日〜bookingNotifyDays日後の未予約）
+function getBookingReminders(today) {
+  if (!bookingUrl) return [];
+  const todayMs  = today.getTime();
+  const limitMs  = todayMs + bookingNotifyDays * 86400000;
+  const results  = [];
+  lessons.forEach((l, idx) => {
+    if (!l.needsBooking || l.booked) return;
+    const d = new Date(l.date + 'T00:00:00').getTime();
+    if (d >= todayMs && d <= limitMs) {
+      const daysLeft = Math.floor((d - todayMs) / 86400000);
+      results.push({ l, lessonIdx: idx, daysLeft });
+    }
+  });
+  results.sort((a, b) => a.l.date.localeCompare(b.l.date));
+  return results;
+}
+
+let _bookingBannerDismissed = false; // セッション中の非表示フラグ
+
+function renderBookingReminders(today) {
+  const banner   = document.getElementById('bookingReminderBanner');
+  const listEl   = document.getElementById('bookingReminderList');
+  if (!banner || !listEl) return;
+
+  const reminders = getBookingReminders(today);
+  if (!reminders.length || _bookingBannerDismissed) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  listEl.innerHTML = reminders.map(({ l, lessonIdx, daysLeft }) => {
+    const d = new Date(l.date + 'T00:00:00');
+    const dateLabel = `${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+    const dayLabel  = daysLeft === 0 ? '今日' : daysLeft === 1 ? '明日' : `${daysLeft}日後`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--radius-sm);padding:8px 10px;gap:8px;cursor:pointer" onclick="jumpToBookingDate('${l.date}')">
+      <div style="flex:1;min-width:0">
+        <span style="font-weight:600;font-size:13px">${l.student}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:6px">${dateLabel}・${dayLabel}</span>
+      </div>
+      ${bookingUrl ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openBookingSite(${lessonIdx})" style="flex-shrink:0;font-size:11px">予約する →</button>` : ''}
+    </div>`;
+  }).join('');
+
+  banner.style.display = 'block';
+}
+
+function dismissBookingBanner() {
+  _bookingBannerDismissed = true;
+  const banner = document.getElementById('bookingReminderBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+function jumpToBookingDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  currentYear = d.getFullYear();
+  currentMonth = d.getMonth() + 1;
+  selectedDate = dateStr;
+  renderCalendar();
+  document.getElementById('noticeDropdown')?.classList.remove('open');
+  // スケジュールビューへ
+  showView('schedule');
+}
+
 function saveBookingSettings() {
-  const urlVal     = (document.getElementById('bookingUrlInput')?.value || '').trim();
-  const daysVal    = parseInt(document.getElementById('bookingNotifyDaysInput')?.value || '1');
-  const tapModeVal = document.getElementById('bookingTapModeSelect')?.value || 'single';
-  bookingUrl        = urlVal;
-  bookingNotifyDays = isNaN(daysVal) ? 1 : Math.max(0, daysVal);
-  bookingTapMode    = tapModeVal;
+  const urlVal         = (document.getElementById('bookingUrlInput')?.value || '').trim();
+  const daysVal        = parseInt(document.getElementById('bookingNotifyDaysInput')?.value || '1');
+  const tapModeVal     = document.getElementById('bookingTapModeSelect')?.value || 'single';
+  const defCheckedVal  = !!(document.getElementById('bookingDefaultCheckedToggle')?.checked);
+  bookingUrl            = urlVal;
+  bookingNotifyDays     = isNaN(daysVal) ? 1 : Math.max(0, daysVal);
+  bookingTapMode        = tapModeVal;
+  bookingDefaultChecked = defCheckedVal;
   saveData();
   showToast('教室予約設定を保存しました');
 }
 
 function updateBookingSettingsUI() {
-  const urlEl     = document.getElementById('bookingUrlInput');
-  const daysEl    = document.getElementById('bookingNotifyDaysInput');
-  const tapSelEl  = document.getElementById('bookingTapModeSelect');
-  const permEl    = document.getElementById('notifyPermBtn');
-  if (urlEl)    urlEl.value    = bookingUrl || '';
-  if (daysEl)   daysEl.value   = String(bookingNotifyDays);
-  if (tapSelEl) tapSelEl.value = bookingTapMode || 'single';
+  const urlEl      = document.getElementById('bookingUrlInput');
+  const daysEl     = document.getElementById('bookingNotifyDaysInput');
+  const tapSelEl   = document.getElementById('bookingTapModeSelect');
+  const defChkEl   = document.getElementById('bookingDefaultCheckedToggle');
+  const permEl     = document.getElementById('notifyPermBtn');
+  if (urlEl)     urlEl.value    = bookingUrl || '';
+  if (daysEl)    daysEl.value   = String(bookingNotifyDays);
+  if (tapSelEl)  tapSelEl.value = bookingTapMode || 'single';
+  if (defChkEl)  defChkEl.checked = !!bookingDefaultChecked;
   if (permEl) {
     const perm = ('Notification' in window) ? Notification.permission : 'denied';
     permEl.textContent = perm === 'granted' ? '🔔 通知許可済み' : '🔔 通知を許可する';
@@ -5271,6 +5392,7 @@ function markBooked(lessonIdx) {
   saveData();
   renderDayPanel(selectedDate);
   if (document.getElementById('dayPopup').classList.contains('open')) refreshPopupLessons(l.date);
+  renderPendingNotices();
   showToast(`${l.student} の教室予約を「予約済」にしました`);
 }
 
@@ -5281,6 +5403,7 @@ function toggleBookingStatus(lessonIdx) {
   saveData();
   renderDayPanel(selectedDate);
   if (document.getElementById('dayPopup').classList.contains('open')) refreshPopupLessons(l.date);
+  renderPendingNotices();
   showToast(l.booked ? `${l.student} の教室予約を「予約済」にしました` : `${l.student} の予約済を取り消しました`);
 }
 
