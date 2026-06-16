@@ -2050,10 +2050,10 @@
       <div class="icon-picker-wrap">
         <button class="icon-select-btn" type="button" id="iconSelectBtn" onclick="toggleIconPicker(event)">
           <span class="icon-preview-em" id="courseIconPreview">📋</span>
-          <span id="courseIconLabel">アイコンを選ぶ</span>
+          <span style="color:var(--text3);font-size:12px">変更する</span>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="icon-picker-panel" id="iconPickerPanel" style="display:none">
+        <div class="icon-picker-panel" id="iconPickerPanel" style="display:none" onclick="event.stopPropagation()">
           <div class="icon-picker-tabs" id="iconPickerTabs"></div>
           <div class="icon-picker-grid" id="iconPickerGrid"></div>
         </div>
@@ -3551,7 +3551,7 @@ const ICON_GROUPS = [
   { label:'アート・クリエイティブ', icons:['🎨','🖌️','✂️','🧵','🪡','🧶','📸','🖼️','🏺','🪆'] },
   { label:'ウェルネス・美', icons:['🧘','💆','💅','🌿','🌸','🧖','💊','🩺','🌞','🧴'] },
   { label:'料理・食', icons:['🍳','🧑‍🍳','🥗','🎂','☕','🍵','🍷','🥐','🍜','🥩'] },
-  { label:'数字', icons:['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'] },
+  { label:'数字', icons:['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'] },
   { label:'記号・その他', icons:['⭐','🌟','💫','✨','🔥','💎','🏅','🎖️','🥇','🎗️','🔷','🔶','🔴','🟡','🟢','🔵','🟣','⚡','♾️','🔮'] },
 ];
 
@@ -3598,7 +3598,6 @@ function _closeIconPickerOutside(e) {
 function selectCourseIcon(em) {
   editingCourseIcon = em;
   document.getElementById('courseIconPreview').textContent = em;
-  document.getElementById('courseIconLabel').textContent = em;
   document.getElementById('iconPickerPanel').style.display = 'none';
   renderIconPicker();
 }
@@ -3606,7 +3605,6 @@ function selectCourseIcon(em) {
 function setIconPreviewUI(em) {
   editingCourseIcon = em;
   document.getElementById('courseIconPreview').textContent = em;
-  document.getElementById('courseIconLabel').textContent = em;
 }
 
 // ========== GROUP LESSONS ==========
