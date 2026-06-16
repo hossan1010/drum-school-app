@@ -1427,34 +1427,38 @@
                 <div class="rule-card">
                   <div class="rule-row" style="flex-wrap:wrap;gap:8px">
                     <span class="rule-label">予約サイトURL</span>
-                    <input type="url" id="bookingUrlInput" class="form-control" placeholder="https://..." style="max-width:260px;font-size:13px;flex:1">
+                    <input type="url" id="bookingUrlInput" class="form-control" placeholder="https://..." style="max-width:260px;font-size:13px;flex:1" oninput="onBookingUrlInput(this.value)">
                   </div>
-                  <div class="rule-row">
-                    <span class="rule-label">通知タイミング</span>
-                    <div class="rule-edit-row" style="gap:6px;align-items:center">
-                      <input type="number" id="bookingNotifyDaysInput" min="0" max="30" value="1" style="width:60px">
-                      <span style="font-size:13px;color:var(--text2)">日前</span>
-                      <span style="font-size:11px;color:var(--text3)">（0=当日）</span>
+                  <div id="bookingSubSettings" style="opacity:0.35;pointer-events:none">
+                    <div class="rule-row">
+                      <span class="rule-label">通知タイミング</span>
+                      <div class="rule-edit-row" style="gap:6px;align-items:center">
+                        <input type="number" id="bookingNotifyDaysInput" min="0" max="30" value="1" style="width:60px">
+                        <span style="font-size:13px;color:var(--text2)">日前</span>
+                        <span style="font-size:11px;color:var(--text3)">（0=当日）</span>
+                      </div>
+                    </div>
+                    <div class="rule-row">
+                      <span class="rule-label">未予約バッジのタップ動作</span>
+                      <div class="rule-edit-row">
+                        <select id="bookingTapModeSelect">
+                          <option value="single">シングルタップで予約サイトへ</option>
+                          <option value="confirm">確認ダイアログを表示</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="rule-row">
+                      <span class="rule-label">予定追加時に「要予約」をデフォルトでオン</span>
+                      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                        <input type="checkbox" id="bookingDefaultCheckedToggle" style="width:16px;height:16px;accent-color:var(--accent)">
+                        <span style="font-size:12px;color:var(--text2)">デフォルトでチェック</span>
+                      </label>
+                    </div>
+                    <div class="rule-row" style="gap:8px;flex-wrap:wrap">
+                      <button class="btn btn-ghost btn-sm" onclick="requestNotificationPermission()" id="notifyPermBtn">🔔 通知を許可する</button>
                     </div>
                   </div>
-                  <div class="rule-row">
-                    <span class="rule-label">未予約バッジのタップ動作</span>
-                    <div class="rule-edit-row">
-                      <select id="bookingTapModeSelect">
-                        <option value="single">シングルタップで予約サイトへ</option>
-                        <option value="confirm">確認ダイアログを表示</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="rule-row">
-                    <span class="rule-label">予定追加時に「要予約」をデフォルトでオン</span>
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                      <input type="checkbox" id="bookingDefaultCheckedToggle" style="width:16px;height:16px;accent-color:var(--accent)">
-                      <span style="font-size:12px;color:var(--text2)">デフォルトでチェック</span>
-                    </label>
-                  </div>
-                  <div class="rule-row" style="gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-ghost btn-sm" onclick="requestNotificationPermission()" id="notifyPermBtn">🔔 通知を許可する</button>
+                  <div class="rule-row" style="gap:8px;flex-wrap:wrap;margin-top:4px">
                     <button class="btn btn-primary btn-sm" onclick="saveBookingSettings()">保存する</button>
                   </div>
                 </div>
@@ -5332,6 +5336,14 @@ function jumpToBookingDate(dateStr) {
   showView('schedule');
 }
 
+function onBookingUrlInput(val) {
+  const sub = document.getElementById('bookingSubSettings');
+  if (!sub) return;
+  const hasUrl = val.trim().length > 0;
+  sub.style.opacity       = hasUrl ? '1'    : '0.35';
+  sub.style.pointerEvents = hasUrl ? 'auto' : 'none';
+}
+
 function saveBookingSettings() {
   const urlVal         = (document.getElementById('bookingUrlInput')?.value || '').trim();
   const daysVal        = parseInt(document.getElementById('bookingNotifyDaysInput')?.value || '1');
@@ -5360,6 +5372,8 @@ function updateBookingSettingsUI() {
     permEl.textContent = perm === 'granted' ? '🔔 通知許可済み' : '🔔 通知を許可する';
     permEl.disabled = perm === 'granted';
   }
+  // URLの有無でサブ設定の有効/無効を反映
+  onBookingUrlInput(bookingUrl || '');
 }
 
 function requestNotificationPermission() {
