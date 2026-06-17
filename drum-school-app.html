@@ -1066,6 +1066,7 @@
 
   @media (min-width: 641px) { .bottom-nav { display: none; } }
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer onload="onGisLoaded()"></script>
 </head>
 <body>
 <div class="app">
@@ -1673,6 +1674,52 @@
                   <div class="rule-row">
                     <span class="rule-label" style="color:var(--red)">データをリセット</span>
                     <button class="btn btn-danger btn-sm" onclick="confirmResetData()">初期化する</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Google Calendar 連携 -->
+              <div class="settings-section" style="margin-top:20px">
+                <div class="settings-section-header">
+                  <div>
+                    <div class="settings-section-title">Google Calendar 連携</div>
+                    <div class="settings-section-desc">レッスン予定をGoogleカレンダーに書き出します。クライアントIDはGoogle Cloud ConsoleのOAuth認証情報から取得してください。</div>
+                  </div>
+                </div>
+                <div class="rule-card">
+                  <div class="rule-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:10px 0">
+                    <label class="form-label" style="margin:0">クライアントID</label>
+                    <input type="text" class="form-control" id="gcalClientIdInput"
+                      placeholder="xxxxx.apps.googleusercontent.com"
+                      style="font-size:11px;font-family:var(--mono);width:100%"
+                      oninput="onGcalClientIdChange()">
+                    <div style="font-size:11px;color:var(--text3)">※ Google Cloud Console → APIとサービス → 認証情報 から取得</div>
+                  </div>
+                  <div class="rule-row">
+                    <span class="rule-label">接続状態</span>
+                    <span id="gcalStatus" style="font-size:12px;color:var(--text3)">未接続</span>
+                  </div>
+                  <div class="rule-row" style="gap:8px;justify-content:flex-end">
+                    <button class="btn btn-ghost btn-sm" id="gcalSignOutBtn" style="display:none" onclick="gcalSignOut()">サインアウト</button>
+                    <button class="btn btn-primary btn-sm" id="gcalSignInBtn" onclick="gcalSignIn()">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                      Googleでサインイン
+                    </button>
+                  </div>
+                  <div id="gcalSyncArea" style="display:none;border-top:1px solid var(--border);margin-top:4px;padding-top:10px">
+                    <div class="rule-row" style="gap:8px;align-items:center">
+                      <span class="rule-label" style="flex:0 0 auto">同期範囲</span>
+                      <select class="form-control" id="gcalSyncMode" style="flex:1;padding:4px 8px;font-size:12px">
+                        <option value="future">今日以降のレッスン</option>
+                        <option value="all">すべてのレッスン</option>
+                      </select>
+                    </div>
+                    <div class="rule-row" style="justify-content:flex-end;margin-top:4px">
+                      <button class="btn btn-primary btn-sm" onclick="gcalSyncLessons()" style="gap:6px">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                        Googleカレンダーに同期
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3690,6 +3737,12 @@ let editingCourseIcon   = '📋';
 let _courseTouchAbort   = null;
 let _ageTouchAbort      = null;
 
+// ========== GOOGLE CALENDAR ==========
+let gcalClientId    = '94308907116-i6mjp35ufpngut1klfh3ordmrm0t2m38.apps.googleusercontent.com';
+let gcalTokenClient = null;
+let gcalAccessToken = null;
+let gcalSignedIn    = false;
+
 const ICON_GROUPS = [
   { label:'レッスン・職業', icons:['📋','👩‍🏫','👨‍🏫','🎓','📝','✏️','🖊️','📐','📏','🗒️','📖','📚','🔬','🔭','💻','🖥️','💡','🔑','🏆','🎯'] },
   { label:'スポーツ・体', icons:['⚽','🏀','🎾','🏸','🏈','⚾','🏒','🎱','🏓','🥊','🥋','🏄','🚴','🏋️','🤸','🏊','🎿','🏹','🤺','🧗'] },
@@ -5141,6 +5194,8 @@ function deleteLesson(idx) {
     const s = students.find(s => s.name === name);
     if (s) s.makeupLeft = Math.max(0, s.makeupLeft - 1);
   }
+  // Googleカレンダーに同期済みならイベントを削除
+  if (l.gcalEventId) gcalDeleteEvent(l.gcalEventId);
   lessons.splice(idx, 1);
   renderCalendar();
   renderMakeupTable();
@@ -5670,7 +5725,7 @@ function showView(name) {
   closePopup();
   if (name === 'income') renderIncome();
   if (name === 'settings') {
-    renderSpotColorSwatches(); renderAgeLabelSettings(); updateBookingSettingsUI();
+    renderSpotColorSwatches(); renderAgeLabelSettings(); updateBookingSettingsUI(); initGcalSettings();
     // モバイルではメニューホームを表示してパネルを隠す
     if (isMobileSettings()) {
       const menuHome = document.getElementById('settingsMenuHome');
@@ -5763,6 +5818,7 @@ function saveData() {
       bookingNotifyDays,
       bookingTapMode,
       bookingDefaultChecked,
+      gcalClientId,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch(e) {
@@ -5799,6 +5855,7 @@ function loadData() {
     if (data.bookingNotifyDays != null) bookingNotifyDays = data.bookingNotifyDays;
     if (data.bookingTapMode)        bookingTapMode        = data.bookingTapMode;
     if (data.bookingDefaultChecked != null) bookingDefaultChecked = data.bookingDefaultChecked;
+    if (data.gcalClientId)          gcalClientId          = data.gcalClientId;
     return true;
   } catch(e) {
     console.warn('データの読み込みに失敗しました:', e);
@@ -5995,6 +6052,140 @@ function checkBookingNotifications() {
       });
     }
   });
+}
+
+// ========== GOOGLE CALENDAR FUNCTIONS ==========
+
+function onGisLoaded() {
+  if (!gcalClientId) return;
+  _initGcalTokenClient();
+}
+
+function _initGcalTokenClient() {
+  if (typeof google === 'undefined' || !gcalClientId) return;
+  gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: gcalClientId,
+    scope: 'https://www.googleapis.com/auth/calendar.events',
+    callback: (resp) => {
+      if (resp.error) { showToast('Googleサインインに失敗しました: ' + resp.error); return; }
+      gcalAccessToken = resp.access_token;
+      gcalSignedIn    = true;
+      updateGcalUI();
+      showToast('Googleアカウントに接続しました ✓');
+    }
+  });
+}
+
+function onGcalClientIdChange() {
+  const val = document.getElementById('gcalClientIdInput')?.value.trim();
+  if (val && val !== gcalClientId) {
+    gcalClientId    = val;
+    gcalTokenClient = null; // クライアントID変更時は再初期化
+    gcalAccessToken = null;
+    gcalSignedIn    = false;
+    updateGcalUI();
+    saveData();
+  }
+}
+
+function gcalSignIn() {
+  const inputVal = document.getElementById('gcalClientIdInput')?.value.trim();
+  if (inputVal) { gcalClientId = inputVal; saveData(); }
+  if (!gcalClientId) { showToast('クライアントIDを入力してください'); return; }
+  if (!gcalTokenClient) _initGcalTokenClient();
+  if (!gcalTokenClient) { showToast('Google APIの読み込みが完了していません。少し待ってから再試行してください'); return; }
+  gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function gcalSignOut() {
+  if (gcalAccessToken) google.accounts.oauth2.revoke(gcalAccessToken, () => {});
+  gcalAccessToken = null;
+  gcalSignedIn    = false;
+  updateGcalUI();
+  showToast('Googleアカウントから切断しました');
+}
+
+function updateGcalUI() {
+  const inBtn   = document.getElementById('gcalSignInBtn');
+  const outBtn  = document.getElementById('gcalSignOutBtn');
+  const area    = document.getElementById('gcalSyncArea');
+  const status  = document.getElementById('gcalStatus');
+  const cidInput = document.getElementById('gcalClientIdInput');
+  if (!inBtn) return;
+  inBtn.style.display  = gcalSignedIn ? 'none' : '';
+  outBtn.style.display = gcalSignedIn ? ''     : 'none';
+  if (area)   area.style.display  = gcalSignedIn ? '' : 'none';
+  if (status) { status.textContent = gcalSignedIn ? '接続済み ✓' : '未接続'; status.style.color = gcalSignedIn ? 'var(--green)' : 'var(--text3)'; }
+  if (cidInput && !cidInput.value) cidInput.value = gcalClientId;
+}
+
+function _lessonToGcalEvent(lesson) {
+  const tz = 'Asia/Tokyo';
+  const pad = n => String(n).padStart(2,'0');
+  const addMins = (t, m) => { const [h,mi] = t.split(':').map(Number); const tot = h*60+mi+m; return `${pad(Math.floor(tot/60)%24)}:${pad(tot%60)}`; };
+
+  const startStr = lesson.time ? `${lesson.date}T${lesson.time}:00+09:00` : null;
+  const endRaw   = lesson.endTime || (lesson.time ? addMins(lesson.time, 60) : null);
+  const endStr   = endRaw ? `${lesson.date}T${endRaw}:00+09:00` : null;
+
+  const title = (lesson.type === 'trial' ? '[体験] ' : '') + lesson.student;
+  const desc  = [lesson.course && `コース: ${lesson.course}`, lesson.memo && `メモ: ${lesson.memo}`, '—LessonScheduler'].filter(Boolean).join('\n');
+
+  const event = { summary: title, description: desc };
+  if (startStr) { event.start = { dateTime: startStr, timeZone: tz }; event.end = { dateTime: endStr, timeZone: tz }; }
+  else          { event.start = { date: lesson.date };                 event.end = { date: lesson.date }; }
+  return event;
+}
+
+async function _gcalRequest(method, path, body) {
+  const res = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
+    method,
+    headers: { 'Authorization': `Bearer ${gcalAccessToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res;
+}
+
+async function gcalSyncLessons() {
+  if (!gcalSignedIn || !gcalAccessToken) { showToast('先にGoogleサインインしてください'); return; }
+  const today  = new Date().toISOString().slice(0, 10);
+  const mode   = document.getElementById('gcalSyncMode')?.value || 'future';
+  const targets = lessons.filter(l => mode === 'all' || l.date >= today);
+  if (!targets.length) { showToast('同期するレッスンがありません'); return; }
+
+  let created = 0, updated = 0, failed = 0;
+  showToast(`同期中… (${targets.length}件)`);
+
+  for (const lesson of targets) {
+    const event = _lessonToGcalEvent(lesson);
+    try {
+      if (lesson.gcalEventId) {
+        const res = await _gcalRequest('PUT', `/calendars/primary/events/${lesson.gcalEventId}`, event);
+        if (res.status === 404) {
+          // カレンダー側で削除済み → 新規作成
+          const r2 = await _gcalRequest('POST', '/calendars/primary/events', event);
+          if (r2.ok) { lesson.gcalEventId = (await r2.json()).id; created++; } else failed++;
+        } else if (res.ok) { updated++; } else { failed++; }
+      } else {
+        const res = await _gcalRequest('POST', '/calendars/primary/events', event);
+        if (res.ok) { lesson.gcalEventId = (await res.json()).id; created++; } else { failed++; }
+      }
+    } catch { failed++; }
+  }
+
+  saveData();
+  showToast(`同期完了: 新規${created}件・更新${updated}件${failed ? `・失敗${failed}件` : ''}`);
+}
+
+async function gcalDeleteEvent(eventId) {
+  if (!gcalSignedIn || !gcalAccessToken || !eventId) return;
+  await _gcalRequest('DELETE', `/calendars/primary/events/${eventId}`).catch(() => {});
+}
+
+function initGcalSettings() {
+  const inp = document.getElementById('gcalClientIdInput');
+  if (inp) inp.value = gcalClientId;
+  updateGcalUI();
 }
 
 // 1日1回通知チェック（ページ読み込み時 + 毎時間）
