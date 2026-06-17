@@ -3350,11 +3350,45 @@ function updateSpotOnly(dBefore) {
 function toggleSuspend(id) {
   const s = students.find(s => s.id === id);
   if (!s) return;
-  s.suspended = !s.suspended;
+  if (!s.suspensionPeriods) s.suspensionPeriods = [];
+
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  const pad = n => String(n).padStart(2,'0');
+
+  if (!s.suspended) {
+    // 休会開始: 当月から休会
+    s.suspended = true;
+    s.suspensionPeriods.push({ from: `${y}-${pad(m)}-01`, to: null });
+  } else {
+    // 復帰: 前月末を休会終了とし、当月から収入に含める
+    s.suspended = false;
+    const lastPeriod = [...s.suspensionPeriods].reverse().find(p => p.to === null);
+    if (lastPeriod) {
+      const prevM = m === 1 ? 12 : m - 1;
+      const prevY = m === 1 ? y - 1 : y;
+      const lastDay = new Date(prevY, prevM, 0).getDate();
+      lastPeriod.to = `${prevY}-${pad(prevM)}-${pad(lastDay)}`;
+    }
+  }
   saveData();
   renderStudents();
   renderIncome();
-  showToast(s.suspended ? `「${s.name}」を休会にしました` : `「${s.name}」の休会を解除しました`);
+  showToast(s.suspended ? `「${s.name}」を休会にしました（${y}年${m}月〜）` : `「${s.name}」が${y}年${m}月より復帰しました`);
+}
+
+// 指定した年月に生徒が休会中だったか判定（履歴ベース）
+function wasStudentSuspendedInMonth(s, year, month) {
+  if (!s.suspensionPeriods || s.suspensionPeriods.length === 0) {
+    // 履歴なし → 現在フラグで後方互換
+    return !!s.suspended;
+  }
+  const pad = n => String(n).padStart(2,'0');
+  const monthStart = `${year}-${pad(month)}-01`;
+  const monthEnd   = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+  return s.suspensionPeriods.some(p =>
+    p.from <= monthEnd && (p.to === null || p.to >= monthStart)
+  );
 }
 
 // ========== INCOME ==========
@@ -3374,15 +3408,15 @@ function getGroupDiscountRateForStudent(studentId) {
 }
 
 function getMonthlyData(year, month) {
-  // 月謝収入：月謝制生徒の月謝合計（グループメンバーは各グループの割引率、休会中は除外）
-  const monthly = students.filter(s => s.plan === 'monthly' && !s.suspended).reduce((sum, s) => {
+  // 月謝収入：その月に休会していない月謝制生徒の月謝合計
+  const monthly = students.filter(s => s.plan === 'monthly' && !wasStudentSuspendedInMonth(s, year, month)).reduce((sum, s) => {
     const rate = getGroupDiscountRateForStudent(s.id);
     return sum + Math.round(s.fee * rate);
   }, 0);
 
-  // 都度払い収入：その月に授業が入っている都度払い生徒の回数 × 料金（休会中は除外）
+  // 都度払い収入：その月に授業が入っている都度払い生徒の回数 × 料金（その月に休会中は除外）
   const monthStr = `${year}-${String(month).padStart(2,'0')}`;
-  const spotStudentMap = new Map(students.filter(s => s.plan === 'spot' && !s.suspended).map(s => [s.name, s.fee]));
+  const spotStudentMap = new Map(students.filter(s => s.plan === 'spot' && !wasStudentSuspendedInMonth(s, year, month)).map(s => [s.name, s.fee]));
   let spot = 0;
   lessons.forEach(l => {
     if (l.date.startsWith(monthStr) && spotStudentMap.has(l.student)) {
@@ -3422,9 +3456,9 @@ function renderIncome() {
   document.getElementById('incomeMonthLabel').textContent = `${incomeYear}年${incomeMonth}月`;
   document.getElementById('incomeTotal').textContent = '¥' + d.total.toLocaleString();
   document.getElementById('incomeConfirmed').textContent = '¥' + d.confirmed.toLocaleString();
-  const mCount = students.filter(s=>s.plan==='monthly' && !s.suspended).length;
-  const sCount = students.filter(s=>s.plan==='spot' && !s.suspended).length;
-  const suspendedCount = students.filter(s=>s.suspended).length;
+  const mCount = students.filter(s=>s.plan==='monthly' && !wasStudentSuspendedInMonth(s, incomeYear, incomeMonth)).length;
+  const sCount = students.filter(s=>s.plan==='spot' && !wasStudentSuspendedInMonth(s, incomeYear, incomeMonth)).length;
+  const suspendedCount = students.filter(s=>wasStudentSuspendedInMonth(s, incomeYear, incomeMonth)).length;
   document.getElementById('incomeStudentCount').textContent = `月謝制 ${mCount}名 ＋ 都度払い ${sCount}名${suspendedCount>0?' （休会中 '+suspendedCount+'名を除く）':''}`;
   const pending = d.spot - (d.confirmed - d.monthly);
   const pendingEl = document.getElementById('incomePending');
@@ -5849,7 +5883,8 @@ function exportData() {
   const a = document.createElement('a');
   const now = new Date();
   a.href = url;
-  a.download = `LessonSchedule_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.json`;
+  const pad = n => String(n).padStart(2,'0');
+  a.download = `LessonSchedule_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
   a.click(); URL.revokeObjectURL(url);
   localStorage.setItem('ls_last_backup', new Date().toISOString());
   showToast('バックアップをダウンロードしました');
