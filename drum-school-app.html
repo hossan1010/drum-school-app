@@ -1673,6 +1673,12 @@
             <div class="settings-panel" id="spanel-data">
               <div class="settings-panel-back hidden" id="spanel-data-back" onclick="goBackToSettingsMenu()">‹ 設定</div>
 
+              <!-- ベータ版バナー -->
+              <div style="background:var(--blue-dim);border:1px solid var(--blue);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--blue);line-height:1.7">
+                <div style="font-weight:700;margin-bottom:4px">🚧 このアプリはベータ版です</div>
+                <div style="font-size:12px;color:var(--text2)">現在テスト中のため、予期しない不具合が発生する場合があります。大切なデータは定期的にバックアップをお取りください。気になる点はフィードバックよりお知らせいただけると助かります。</div>
+              </div>
+
               <div class="settings-section">
                 <div class="settings-section-header">
                   <div>
@@ -1681,12 +1687,13 @@
                   </div>
                 </div>
                 <div class="rule-card">
-                  <div class="rule-row">
+                  <div class="rule-row" style="flex-wrap:wrap;gap:6px">
                     <span class="rule-label">バックアップ</span>
                     <button class="btn btn-ghost btn-sm" onclick="exportData()">
                       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                       JSONでエクスポート
                     </button>
+                    <div id="backupReminderBadge" style="width:100%;margin-top:2px;display:none"></div>
                   </div>
                   <div class="rule-row">
                     <span class="rule-label">データを復元</span>
@@ -1714,6 +1721,9 @@
                     <div class="settings-section-title">Google Calendar 連携</div>
                     <div class="settings-section-desc">レッスン予定をGoogleカレンダーに書き出します。クライアントIDはGoogle Cloud ConsoleのOAuth認証情報から取得してください。</div>
                   </div>
+                </div>
+                <div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber);line-height:1.6">
+                  ⚠️ <strong>テスト版機能</strong>：現在、この機能はアプリ開発者のアカウントでのみ動作します。他のユーザーが使用する場合はGoogleによる審査が必要です。
                 </div>
                 <div class="rule-card">
                   <div class="rule-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:10px 0">
@@ -1935,6 +1945,38 @@
       授業を追加
     </button>
     <button class="btn btn-ghost btn-sm" style="flex:1" onclick="openAbsenceModalForDate()">欠席登録</button>
+  </div>
+</div>
+
+<!-- Modal: 初回起動案内 -->
+<div class="modal-overlay" id="welcomeModal" style="z-index:300;align-items:center">
+  <div class="modal" style="max-width:360px;padding:28px 24px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:10px">🗂️</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px">LessonScheduler へようこそ</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        ご利用前に大切なお知らせがあります。
+      </div>
+    </div>
+    <div style="background:var(--amber-dim);border:1px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.8">
+      <div style="font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ データの保存について</div>
+      <div style="color:var(--text2)">
+        このアプリのデータは<strong style="color:var(--text)">お使いの端末のブラウザ内</strong>にのみ保存されます。<br>
+        以下の操作でデータが<strong style="color:var(--red)">すべて消える</strong>場合があります：
+        <ul style="margin:8px 0 0 16px;padding:0;color:var(--text2)">
+          <li>ブラウザの閲覧データ・キャッシュを削除する</li>
+          <li>Safari でプライベートブラウズを使用する</li>
+          <li>機種変更・端末の初期化</li>
+        </ul>
+      </div>
+    </div>
+    <div style="background:var(--green-dim);border:1px solid var(--green);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--text2);line-height:1.7">
+      <strong style="color:var(--green)">💾 定期的なバックアップを推奨します</strong><br>
+      設定 → データ管理 より JSON ファイルでバックアップが保存できます。週に1回程度の実施をお勧めします。
+    </div>
+    <button class="btn btn-primary" style="width:100%;font-size:15px;padding:13px" onclick="dismissWelcome()">
+      理解しました、はじめる
+    </button>
   </div>
 </div>
 
@@ -4049,8 +4091,13 @@ function saveGroup() {
   const discountRate = Math.min(100, Math.max(10, discountPct)) / 100;
   const editId = document.getElementById('editGroupId').value;
   if (editId) {
-    const g = groups.find(x => x.id === parseInt(editId));
-    if (g) { g.name = name; g.courseId = courseId; g.color = color; g.memberIds = memberIds; g.discountRate = discountRate; }
+    const gid = parseInt(editId);
+    const g = groups.find(x => x.id === gid);
+    if (g) {
+      g.name = name; g.courseId = courseId; g.color = color; g.memberIds = memberIds; g.discountRate = discountRate;
+      // 既存レッスンのgroupNameを同期
+      lessons.forEach(l => { if (l.type === 'group' && l.groupId === gid) l.groupName = name; });
+    }
   } else {
     groups.push({ id: nextGroupId++, name, courseId, color, memberIds, discountRate });
   }
@@ -4058,17 +4105,22 @@ function saveGroup() {
   renderGroupSettings();
   buildGroupSelect();
   renderStudents();
+  renderCalendar();
   closeModal('groupModal');
   showToast('グループを保存しました');
 }
 
 function deleteGroup(id) {
-  if (!confirm('このグループを削除しますか？')) return;
+  if (!confirm('このグループを削除しますか？\n（このグループの過去・未来のレッスンもすべて削除されます）')) return;
   groups = groups.filter(g => g.id !== id);
+  // 関連レッスンも削除
+  lessons = lessons.filter(l => !(l.type === 'group' && l.groupId === id));
   saveData();
   renderGroupSettings();
   buildGroupSelect();
   renderStudents();
+  renderCalendar();
+  renderMakeupTable();
   showToast('グループを削除しました');
 }
 
@@ -4764,7 +4816,7 @@ function addLesson() {
   if (currentLessonType === 'trial') {
     const trialName = document.getElementById('trialName').value.trim() || '体験者';
     lessons.push({ date, time, endTime, student: trialName, type: 'trial', course: '体験', memo, needsBooking: false, booked: false });
-    closeModal('lessonModal'); renderCalendar();
+    saveData(); closeModal('lessonModal'); renderCalendar();
     showToast(`${trialName} の体験レッスンを追加しました`);
   } else if (currentLessonType === 'group') {
     const gid = parseInt(document.getElementById('lessonGroup').value);
@@ -4796,10 +4848,10 @@ function registerAbsence() {
   if (!sid || !date) { showToast('生徒と日付を選択してください'); return; }
   const s = students.find(s => s.id === parseInt(sid));
   if (!s) return;
-  const d = new Date(date); d.setMonth(d.getMonth()+1);
-  const deadline = fmt(d.getFullYear(), d.getMonth()+1, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate());
-  makeupList.push({ id: makeupList.length+1, student: s.name, absentDate: date, deadline, status: 'pending' });
+  const deadline = calcMakeupDeadline(date);
+  makeupList.push({ id: Date.now(), student: s.name, absentDate: date, deadline, status: 'pending' });
   s.makeupLeft++;
+  saveData();
   closeModal('absenceModal'); renderMakeupTable(); renderStudents();
   showToast(`${s.name} を欠席登録し、振替権利を発生させました`);
 }
@@ -4817,6 +4869,7 @@ function markAbsent(name, date) {
     // 取り消し
     makeupList.splice(makeupList.indexOf(existing), 1);
     if (s) s.makeupLeft = Math.max(0, s.makeupLeft - 1);
+    saveData();
     renderMakeupTable(); renderStudents();
     renderDayPanel(selectedDate);
     if (document.getElementById('dayPopup').classList.contains('open')) refreshPopupLessons(date);
@@ -4840,7 +4893,7 @@ function openMakeupDatePicker(name, absentDate, lessonIdx, originalTime, origina
   document.getElementById('makeupDateModalTitle').textContent = `${name} の振替日・時間を選択`;
   const d = new Date(absentDate + 'T00:00:00');
   document.getElementById('makeupDateModalSub').textContent =
-    `欠席日: ${d.getMonth()+1}月${d.getDate()}日 ／ 振替期限: 翌月末まで`;
+    `欠席日: ${d.getMonth()+1}月${d.getDate()}日 ／ 振替期限: ${deadlineLabel()}`;
   document.getElementById('selectedMakeupDateLabel').textContent = '未選択';
   document.getElementById('confirmMakeupDateBtn').disabled = true;
   document.getElementById('makeupTimeSection').style.display = 'none';
@@ -5156,10 +5209,27 @@ function onNoticeItemClick(student, absentDate, lessonIdx, origTime, origCourse)
   openMakeupDatePicker(student, absentDate, lessonIdx, origTime, origCourse);
 }
 
+// 振替期限を makeupRules.deadline に従って計算する
+function calcMakeupDeadline(absentDate) {
+  const base = new Date(absentDate + 'T00:00:00');
+  const rule = makeupRules.deadline || 'next_month';
+  let months = 1;
+  if (rule === 'same_month')  months = 0;
+  else if (rule === 'next_month')  months = 1;
+  else if (rule === '2months') months = 2;
+  else if (rule === '3months') months = 3;
+  base.setMonth(base.getMonth() + months);
+  return fmt(base.getFullYear(), base.getMonth()+1, new Date(base.getFullYear(), base.getMonth()+1, 0).getDate());
+}
+
+function deadlineLabel() {
+  const map = { same_month:'同月末まで', next_month:'翌月末まで', '2months':'翌々月末まで', '3months':'3ヶ月後末まで' };
+  return map[makeupRules.deadline] || '翌月末まで';
+}
+
 function registerAbsenceEntry(name, absentDate, makeupDate, makeupTime) {
   const s = students.find(s => s.name === name);
-  const d = new Date(absentDate + 'T00:00:00'); d.setMonth(d.getMonth() + 1);
-  const deadline = fmt(d.getFullYear(), d.getMonth()+1, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate());
+  const deadline = calcMakeupDeadline(absentDate);
   const { lessonIdx, originalCourse, originalMemo } = makeupPickerContext;
 
   // 同一生徒・欠席日の既存 pending エントリを先に削除（重複防止 & バッジ消去）
@@ -5189,6 +5259,7 @@ function registerAbsenceEntry(name, absentDate, makeupDate, makeupTime) {
   makeupList.push({ id: Date.now(), student: name, absentDate, makeupDate, makeupTime, deadline, status: makeupDate ? 'done' : 'pending' });
   if (s && !makeupDate) s.makeupLeft++;
 
+  saveData();
   renderCalendar();
   renderMakeupTable(); renderStudents();
   renderDayPanel(selectedDate);
@@ -5780,7 +5851,9 @@ function exportData() {
   a.href = url;
   a.download = `LessonSchedule_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.json`;
   a.click(); URL.revokeObjectURL(url);
+  localStorage.setItem('ls_last_backup', new Date().toISOString());
   showToast('バックアップをダウンロードしました');
+  updateBackupReminderUI();
 }
 
 function importData(event) {
@@ -5844,7 +5917,7 @@ function showView(name) {
   closePopup();
   if (name === 'income') renderIncome();
   if (name === 'settings') {
-    renderSpotColorSwatches(); renderAgeLabelSettings(); updateBookingSettingsUI(); initGcalSettings(); renderCalFontPicker();
+    renderSpotColorSwatches(); renderAgeLabelSettings(); updateBookingSettingsUI(); initGcalSettings(); renderCalFontPicker(); updateBackupReminderUI();
     // モバイルではメニューホームを表示してパネルを隠す
     if (isMobileSettings()) {
       const menuHome = document.getElementById('settingsMenuHome');
@@ -6327,6 +6400,37 @@ const hasData = loadData();
 
 applyTheme(currentTheme || 'system');
 applyCalFont();
+
+// ========== バックアップリマインダー ==========
+function updateBackupReminderUI() {
+  const badge = document.getElementById('backupReminderBadge');
+  if (!badge) return;
+  const raw = localStorage.getItem('ls_last_backup');
+  if (!raw) {
+    badge.style.display = 'block';
+    badge.innerHTML = `<span style="font-size:11px;color:var(--red)">⚠️ まだバックアップが取られていません。エクスポートを行ってください。</span>`;
+    return;
+  }
+  const last = new Date(raw);
+  const days = Math.floor((Date.now() - last.getTime()) / 86400000);
+  const label = days === 0 ? '今日' : `${days}日前`;
+  if (days >= 7) {
+    badge.style.display = 'block';
+    badge.innerHTML = `<span style="font-size:11px;color:var(--red)">⚠️ 最終バックアップ: <strong>${label}</strong>（7日以上経過しています）</span>`;
+  } else {
+    badge.style.display = 'block';
+    badge.innerHTML = `<span style="font-size:11px;color:var(--text3)">最終バックアップ: ${label}</span>`;
+  }
+}
+
+// ========== 初回起動案内 ==========
+function dismissWelcome() {
+  document.getElementById('welcomeModal').classList.remove('open');
+  localStorage.setItem('ls_welcomed', '1');
+}
+if (!localStorage.getItem('ls_welcomed')) {
+  setTimeout(() => document.getElementById('welcomeModal').classList.add('open'), 400);
+}
 
 // 設定UIを復元
 if (calSatColor)     setTimeout(()=>document.getElementById('satBtn')?.classList.add('on-sat'), 0);
