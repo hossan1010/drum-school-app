@@ -158,14 +158,14 @@
     overflow: hidden; margin-bottom: 24px;
   }
   .cal-header { background: var(--bg3); padding: 8px 0; text-align: center; font-size: 11px; color: var(--text3); font-family: var(--cal-font); }
-  .cal-cell { background: var(--bg2); min-height: 80px; padding: 6px; cursor: pointer; transition: background 0.1s; }
+  .cal-cell { background: var(--bg2); min-height: 80px; padding: 6px; cursor: pointer; transition: background 0.1s; min-width: 0; overflow: hidden; }
   .cal-cell:hover { background: var(--bg3); }
   .cal-cell.other-month { background: var(--bg); opacity: 0.5; }
   .cal-cell.today { background: var(--accent-dim); }
   .cal-cell.today .day-num { color: var(--accent); font-weight: 700; }
   .cal-cell.selected { background: var(--bg3); outline: 2px solid var(--accent); outline-offset: -2px; }
   .day-num { font-size: 12px; color: var(--text2); font-family: var(--cal-font); margin-bottom: 4px; }
-  .lesson-dot { font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .lesson-dot { font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; box-sizing: border-box; }
   .dot-normal { background: var(--blue-dim); color: var(--blue); }
   .dot-makeup { background: var(--green-dim); color: var(--green); }
 
@@ -892,6 +892,24 @@
   }
   .tag-chip-remove:hover { background:var(--red); color:#fff; }
   .tag-input-row { display:flex; gap:6px; align-items:center; }
+  .tag-suggestion-area { margin-top:8px; }
+  .tag-suggestion-label { font-size:11px; color:var(--text3); margin-bottom:5px; }
+  .tag-suggestion-chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .tag-suggestion-chip {
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:11px; padding:3px 8px 3px 10px; border-radius:99px;
+    background:var(--bg3); color:var(--text2); border:1px solid var(--border);
+    cursor:pointer; transition:border-color 0.12s, color 0.12s;
+  }
+  .tag-suggestion-chip:hover { border-color:var(--accent); color:var(--text); }
+  .tag-suggestion-chip-add { flex:0; }
+  .tag-suggestion-chip-del {
+    width:13px; height:13px; border-radius:50%; border:none;
+    background:transparent; color:var(--text3); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; padding:0; line-height:1; transition:all 0.1s;
+  }
+  .tag-suggestion-chip-del:hover { background:var(--red); color:#fff; }
 
   /* Highlight day buttons */
   .highlight-day-btn {
@@ -2133,8 +2151,11 @@
       <div class="field-section-title">タグ</div>
       <div class="tag-editor" id="tagEditor"></div>
       <div class="tag-input-row">
-        <input type="text" class="form-control" id="tagInput" placeholder="タグ名を入力・選択で追加（Enterでも可）" onkeydown="handleTagInput(event)" onchange="addTagFromInput()" list="tagSuggestions" style="flex:1">
-        <datalist id="tagSuggestions"></datalist>
+        <input type="text" class="form-control" id="tagInput" placeholder="タグ名を入力してEnterで追加" onkeydown="handleTagInput(event)" style="flex:1">
+      </div>
+      <div class="tag-suggestion-area" id="tagSuggestionArea" style="display:none">
+        <div class="tag-suggestion-label">候補（タップで追加）</div>
+        <div class="tag-suggestion-chips" id="tagSuggestionChips"></div>
       </div>
     </div>
 
@@ -4449,6 +4470,7 @@ function openEditStudent(id) {
   // タグ
   editingTags = [...(s.tags||[])];
   renderTagEditor();
+  renderTagSuggestionChips();
   updateTagSuggestions();
   // 備考
   document.getElementById('editNotes').value = s.notes || '';
@@ -4485,11 +4507,54 @@ function addTagFromInput() {
   editingTags.push(val);
   input.value = '';
   renderTagEditor();
+  renderTagSuggestionChips();
 }
 
 function updateTagSuggestions() {
-  const dl = document.getElementById('tagSuggestions');
-  dl.innerHTML = getAllTags().map(t => `<option value="${t}">`).join('');
+  // datalist（PCのオートコンプリート）は残す
+  renderTagSuggestionChips();
+}
+
+// 非表示にした候補タグを localStorage で管理（メインデータとは別）
+function getHiddenTagSuggestions() {
+  try { return JSON.parse(localStorage.getItem('ls_hidden_tag_suggestions') || '[]'); } catch { return []; }
+}
+function setHiddenTagSuggestions(arr) {
+  localStorage.setItem('ls_hidden_tag_suggestions', JSON.stringify(arr));
+}
+
+function renderTagSuggestionChips() {
+  const area   = document.getElementById('tagSuggestionArea');
+  const chips  = document.getElementById('tagSuggestionChips');
+  if (!area || !chips) return;
+
+  const hidden  = getHiddenTagSuggestions();
+  // 全生徒のタグから候補を収集し、非表示・編集中に追加済みを除外
+  const candidates = getAllTags().filter(t => !hidden.includes(t) && !editingTags.includes(t));
+
+  if (candidates.length === 0) { area.style.display = 'none'; return; }
+
+  area.style.display = 'block';
+  chips.innerHTML = candidates.map(t => `
+    <div class="tag-suggestion-chip">
+      <span class="tag-suggestion-chip-add" onclick="addTagFromSuggestion('${t.replace(/'/g,"\\'")}')">＋ #${t}</span>
+      <button class="tag-suggestion-chip-del" onclick="hideTagSuggestion('${t.replace(/'/g,"\\'")}')">×</button>
+    </div>
+  `).join('');
+}
+
+function addTagFromSuggestion(tag) {
+  if (!editingTags.includes(tag)) {
+    editingTags.push(tag);
+    renderTagEditor();
+  }
+  renderTagSuggestionChips();
+}
+
+function hideTagSuggestion(tag) {
+  const hidden = getHiddenTagSuggestions();
+  if (!hidden.includes(tag)) { hidden.push(tag); setHiddenTagSuggestions(hidden); }
+  renderTagSuggestionChips();
 }
 
 function onEditPlanChange(autofill = true) {
@@ -4549,6 +4614,7 @@ function openAddStudent() {
   editingTags = [];
   renderTagEditor();
   updateTagSuggestions();
+  renderTagSuggestionChips();
   document.getElementById('editNotes').value = '';
   document.getElementById('deleteStudentBtn').style.display = 'none';
   onEditPlanChange(false);
