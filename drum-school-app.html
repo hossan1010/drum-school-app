@@ -893,23 +893,30 @@
   .tag-chip-remove:hover { background:var(--red); color:#fff; }
   .tag-input-row { display:flex; gap:6px; align-items:center; }
   .tag-suggestion-area { margin-top:8px; }
-  .tag-suggestion-label { font-size:11px; color:var(--text3); margin-bottom:5px; }
-  .tag-suggestion-chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .tag-suggestion-label { font-size:11px; color:var(--text3); margin-bottom:6px; }
+  .tag-suggestion-chips { display:flex; flex-wrap:wrap; gap:6px; }
   .tag-suggestion-chip {
-    display:inline-flex; align-items:center; gap:3px;
-    font-size:11px; padding:3px 8px 3px 10px; border-radius:99px;
-    background:var(--bg3); color:var(--text2); border:1px solid var(--border);
-    cursor:pointer; transition:border-color 0.12s, color 0.12s;
+    display:inline-flex; align-items:stretch;
+    border-radius:99px; overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--bg3); font-size:12px;
   }
-  .tag-suggestion-chip:hover { border-color:var(--accent); color:var(--text); }
-  .tag-suggestion-chip-add { flex:0; }
+  .tag-suggestion-chip-add {
+    padding:5px 6px 5px 11px; color:var(--text2);
+    cursor:pointer; white-space:nowrap; line-height:1.4;
+    background:none; border:none; font:inherit;
+  }
+  .tag-suggestion-chip-add:active { opacity:0.65; }
   .tag-suggestion-chip-del {
-    width:13px; height:13px; border-radius:50%; border:none;
-    background:transparent; color:var(--text3); cursor:pointer;
+    width:26px; padding:0; margin:0;
+    border:none; border-left:1px solid var(--border);
+    background:transparent; color:var(--text3);
+    cursor:pointer; font-size:13px; line-height:1;
     display:flex; align-items:center; justify-content:center;
-    font-size:10px; padding:0; line-height:1; transition:all 0.1s;
+    font-family:var(--font); transition:background 0.1s, color 0.1s;
   }
-  .tag-suggestion-chip-del:hover { background:var(--red); color:#fff; }
+  .tag-suggestion-chip-del:hover,
+  .tag-suggestion-chip-del:active { background:var(--red); color:#fff; }
 
   /* Highlight day buttons */
   .highlight-day-btn {
@@ -2813,7 +2820,7 @@ function renderCalendar() {
                     : g ? (g.color || '#60a5fa')
                     : getCourseColorByShort(l.course);
         const bg = color + '22';
-        const label = l.type === 'group' ? `${l.time} 👥${l.groupName || 'G'}` : `${l.time} ${l.student.split(' ')[0]}`;
+        const label = l.type === 'group' ? `👥${l.groupName || 'G'}` : l.student.split(' ')[0];
         return `<div class="lesson-dot" style="background:${bg};color:${color}">${label}</div>`;
       }).join('') +
       (dl.length > 3 ? `<div style="font-size:10px;color:var(--text3)">+${dl.length-3}</div>` : '');
@@ -4537,7 +4544,7 @@ function renderTagSuggestionChips() {
   area.style.display = 'block';
   chips.innerHTML = candidates.map(t => `
     <div class="tag-suggestion-chip">
-      <span class="tag-suggestion-chip-add" onclick="addTagFromSuggestion('${t.replace(/'/g,"\\'")}')">＋ #${t}</span>
+      <button class="tag-suggestion-chip-add" onclick="addTagFromSuggestion('${t.replace(/'/g,"\\'")}')">＋ #${t}</button>
       <button class="tag-suggestion-chip-del" onclick="hideTagSuggestion('${t.replace(/'/g,"\\'")}')">×</button>
     </div>
   `).join('');
